@@ -1,0 +1,28 @@
+# dependencies
+node_modules
+
+# Output
+dist
+
+# Environment
+.env
+.env*.local
+
+# Https cert files
+*.cert
+*.key
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+*.launch
+.settings/
+.vscode/settings.json
+
+# Temp
+gitignore
+
+# System Files
+.DS_Store
+Thumbs.db

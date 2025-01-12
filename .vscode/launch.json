@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "HTTP Chrome",
+            "type": "chrome",
+            "request": "launch",
+            "skipFiles": [
+                "**/node_modules/**/*",
+                "<node_internals>/**",
+            ],
+            "sourceMaps": true,
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}",
+            // For vite
+            "pathMapping": {
+                "/@fs/": ""
+            },
+        }
+    ]
+}
