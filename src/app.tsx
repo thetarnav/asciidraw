@@ -1,7 +1,12 @@
 import * as React from 'react'
 import * as Tldraw from 'tldraw'
 
-function CustomRenderer() {
+import {
+    Vec,
+} from 'tldraw'
+
+function CustomBackground(): React.ReactNode {
+
 	const editor = Tldraw.useEditor()
 	const rCanvas = React.useRef<HTMLCanvasElement>(null)
 
@@ -9,33 +14,42 @@ function CustomRenderer() {
 		const canvas = rCanvas.current
 		if (!canvas) return
 
-		canvas.style.width = '100%'
+		canvas.style.width  = '100%'
 		canvas.style.height = '100%'
 
-		const rect = canvas.getBoundingClientRect()
-
-		canvas.width = rect.width
-		canvas.height = rect.height
+        const dpr = Math.min(2, Math.max(1, window.devicePixelRatio))
 
 		const ctx = canvas.getContext('2d')!
+        ctx.imageSmoothingEnabled = false
+
+
+        let window_size = new Vec()
+
+        const onResize = () => {
+            window_size.x = window.innerWidth
+            window_size.y = window.innerHeight
+
+            canvas.width  = (window_size.x * dpr)|0
+            canvas.height = (window_size.y * dpr)|0
+        }
 
 		let raf = -1
 
-		function render() {
-			if (!canvas) return
+		const render = () => {
 
-			ctx.resetTransform()
-			ctx.clearRect(0, 0, canvas.width, canvas.height)
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+			ctx.clearRect(0, 0, window_size.x, window_size.y)
 
 			const camera = editor.getCamera()
 			ctx.scale(camera.z, camera.z)
 			ctx.translate(camera.x, camera.y)
 
 			const renderingShapes = editor.getRenderingShapes()
-			const theme = Tldraw.getDefaultColorTheme({ isDarkMode: editor.user.getIsDarkMode() })
+			const theme = Tldraw.getDefaultColorTheme({isDarkMode: editor.user.getIsDarkMode()})
 			const currentPageId = editor.getCurrentPageId()
 
-			for (const { shape, opacity } of renderingShapes) {
+			for (const {shape, opacity} of renderingShapes) {
+                
 				const maskedPageBounds = editor.getShapeMaskedPageBounds(shape)
 				if (!maskedPageBounds) continue
 				ctx.save()
@@ -77,13 +91,37 @@ function CustomRenderer() {
 						ctx.fillStyle = theme[shape.props.color].semi
 						ctx.fill()
 					}
-				} else if (editor.isShapeOfType<Tldraw.TLGeoShape>(shape, 'geo')) {
+				}
+                else if (editor.isShapeOfType<Tldraw.TLArrowShape>(shape, 'arrow')) {
+                    
+                    // Draw an arrow shape
+                    const start = shape.props.start
+                    const end = shape.props.end
+
+                    ctx.beginPath()
+                    ctx.moveTo(start.x, start.y)
+                    ctx.lineTo(end.x, end.y)
+                    ctx.strokeStyle = theme[shape.props.color].solid
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+
+                    // Draw arrowhead at end
+                    const angle = Math.atan2(end.y - start.y, end.x - start.x)
+                    const arrowSize = 12
+                    ctx.beginPath()
+                    ctx.moveTo(end.x - arrowSize * Math.cos(angle - Math.PI / 6), end.y - arrowSize * Math.sin(angle - Math.PI / 6))
+                    ctx.lineTo(end.x, end.y)
+                    ctx.lineTo(end.x - arrowSize * Math.cos(angle + Math.PI / 6), end.y - arrowSize * Math.sin(angle + Math.PI / 6))
+                    ctx.stroke()
+                }
+                else if (editor.isShapeOfType<Tldraw.TLGeoShape>(shape, 'geo')) {
 					// Draw a geo shape
 					const bounds = editor.getShapeGeometry(shape).bounds
 					ctx.strokeStyle = theme[shape.props.color].solid
 					ctx.lineWidth = 2
 					ctx.strokeRect(bounds.minX, bounds.minY, bounds.width, bounds.height)
-				} else {
+				}
+                else {
 					// Draw any other kind of shape
 					const bounds = editor.getShapeGeometry(shape).bounds
 					ctx.strokeStyle = 'black'
@@ -98,27 +136,35 @@ function CustomRenderer() {
 
 		render()
 
+        window.addEventListener('resize', onResize)
+        setTimeout(onResize)
+        onResize()
+
 		return () => {
 			cancelAnimationFrame(raf)
+            window.removeEventListener('resize', onResize)
 		}
 	}, [editor])
 
 	return <canvas ref={rCanvas} />
 }
 
+function CustomShapeIndicator(props: Tldraw.TLShapeIndicatorProps): React.ReactNode {
+
+    console.log('CustomShapeIndicator', props)
+
+    return <></>
+}
+
 export function App() {
 	return (
 		<div className="tldraw__editor">
 			<Tldraw.Tldraw
-				persistenceKey="example"
+				persistenceKey="asciidraw"
 				components={{
-					// We're replacing the Background component with our custom renderer
-					Background: CustomRenderer,
-					// Even though we're hiding the shapes, we'll still do a bunch of work
-					// in react to figure out which shapes to create. In reality, you might
-					// want to set the Canvas component to null and render it all yourself.
-					Canvas: Tldraw.DefaultCanvas,
-				}}
+                    Background: CustomBackground,
+                    // ShapeIndicator: CustomShapeIndicator,
+                }}
 			/>
 		</div>
 	)
