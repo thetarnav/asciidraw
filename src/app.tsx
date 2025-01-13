@@ -156,37 +156,33 @@ function CustomBackground(): React.ReactNode {
 						ctx.fill()
 					}
 				}
+                // Draw an arrow shape
                 else if (editor.isShapeOfType<Tldraw.TLArrowShape>(shape, 'arrow')) {
 
-                    // Draw an arrow shape
-                    const start = shape.props.start
-                    const end = shape.props.end
+                    let geometry = editor.getShapeGeometry(shape)
+                    if (geometry.vertices.length > 1) {
+                        let i = 0
+                        let v = geometry.vertices[i]
+                        ctx.moveTo(v.x, v.y)
+                        for (i++; i < geometry.vertices.length; i++) {
+                            v = geometry.vertices[i]
+                            ctx.lineTo(v.x, v.y)
+                        }
+                    }
 
-                    ctx.beginPath()
-                    ctx.moveTo(start.x, start.y)
-                    ctx.lineTo(end.x, end.y)
                     ctx.strokeStyle = theme[shape.props.color].solid
                     ctx.lineWidth = 2
                     ctx.stroke()
-
-                    // Draw arrowhead at end
-                    const angle = Math.atan2(end.y - start.y, end.x - start.x)
-                    const arrowSize = 12
-                    ctx.beginPath()
-                    ctx.moveTo(end.x - arrowSize * Math.cos(angle - Math.PI / 6), end.y - arrowSize * Math.sin(angle - Math.PI / 6))
-                    ctx.lineTo(end.x, end.y)
-                    ctx.lineTo(end.x - arrowSize * Math.cos(angle + Math.PI / 6), end.y - arrowSize * Math.sin(angle + Math.PI / 6))
-                    ctx.stroke()
                 }
+                // Draw a geo shape
                 else if (editor.isShapeOfType<Tldraw.TLGeoShape>(shape, 'geo')) {
-					// Draw a geo shape
 					const bounds = editor.getShapeGeometry(shape).bounds
 					ctx.strokeStyle = theme[shape.props.color].solid
 					ctx.lineWidth = 2
 					ctx.strokeRect(bounds.minX, bounds.minY, bounds.width, bounds.height)
 				}
+                // Draw any other kind of shape
                 else {
-					// Draw any other kind of shape
 					const bounds = editor.getShapeGeometry(shape).bounds
 					ctx.strokeStyle = 'black'
 					ctx.lineWidth = 2
