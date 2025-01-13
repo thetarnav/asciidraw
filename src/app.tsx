@@ -41,7 +41,7 @@ function CustomBackground(): React.ReactNode {
                 measure_time = time
                 resized = false
                 
-                dpr = Math.min(2, Math.max(1, window.devicePixelRatio))
+                dpr = Tldraw.clamp(window.devicePixelRatio, 1, 2)
 
                 window_size.x = window.innerWidth
                 window_size.y = window.innerHeight
@@ -98,27 +98,22 @@ function CustomBackground(): React.ReactNode {
             // draw rows and cols count in bottom right corner
             ctx.font = '16px monospace'
             ctx.fillStyle = 'rgba(128, 128, 128, 0.6)'
-            const text = `${rows}×${cols}`
-            const metrics = ctx.measureText(text)
+            let text = `${rows}×${cols}`
+            let metrics = ctx.measureText(text)
             ctx.fillText(text, window_size.x - metrics.width - 100, window_size.y - 100)
 
 			
 			ctx.scale(camera.z, camera.z)
 			ctx.translate(camera.x, camera.y)
 
-			// console.log(
-            //     JSON.stringify(editor.getViewportPageBounds()),
-            //     JSON.stringify(editor.getViewportScreenBounds()),
-            // )
+			let shapes = editor.getRenderingShapes()
+			let theme = Tldraw.getDefaultColorTheme({isDarkMode: editor.user.getIsDarkMode()})
+			let pageId = editor.getCurrentPageId()
 
-			const shapes = editor.getRenderingShapes()
-			const theme = Tldraw.getDefaultColorTheme({isDarkMode: editor.user.getIsDarkMode()})
-			const pageId = editor.getCurrentPageId()
-
-			for (const {shape, opacity} of shapes) {
+			for (let {shape, opacity} of shapes) {
                 
-				const maskedPageBounds = editor.getShapeMaskedPageBounds(shape)
-				if (!maskedPageBounds) continue
+				let maskedPageBounds = editor.getShapeMaskedPageBounds(shape)
+				if (maskedPageBounds == null) continue
 				ctx.save()
 
 				if (shape.parentId !== pageId) {
@@ -139,18 +134,20 @@ function CustomBackground(): React.ReactNode {
 				const transform = editor.getShapePageTransform(shape.id)
 				ctx.transform(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f)
 
+                // Draw a freehand shape
 				if (editor.isShapeOfType<Tldraw.TLDrawShape>(shape, 'draw')) {
-					// Draw a freehand shape
-					for (const segment of shape.props.segments) {
-						ctx.moveTo(segment.points[0].x, segment.points[0].y)
-						if (segment.type === 'straight') {
-							ctx.lineTo(segment.points[1].x, segment.points[1].y)
-						} else {
-							for (const point of segment.points.slice(1)) {
-								ctx.lineTo(point.x, point.y)
-							}
-						}
-					}
+
+                    let geometry = editor.getShapeGeometry(shape)
+                    if (geometry.vertices.length > 1) {
+                        let i = 0
+                        let v = geometry.vertices[i]
+                        ctx.moveTo(v.x, v.y)
+                        for (i++; i < geometry.vertices.length; i++) {
+                            v = geometry.vertices[i]
+                            ctx.lineTo(v.x, v.y)
+                        }
+                    }
+
 					ctx.strokeStyle = theme[shape.props.color].solid
 					ctx.lineWidth = 4
 					ctx.stroke()
