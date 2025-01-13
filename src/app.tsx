@@ -11,50 +11,106 @@ function CustomBackground(): React.ReactNode {
 	const rCanvas = React.useRef<HTMLCanvasElement>(null)
 
 	React.useLayoutEffect(() => {
+
 		const canvas = rCanvas.current
 		if (!canvas) return
 
 		canvas.style.width  = '100%'
 		canvas.style.height = '100%'
 
-        const dpr = Math.min(2, Math.max(1, window.devicePixelRatio))
-
 		const ctx = canvas.getContext('2d')!
         ctx.imageSmoothingEnabled = false
+        
 
-
+        let dpr = 1
+        let font_size = new Vec(16, 12)
         let window_size = new Vec()
 
-        const onResize = () => {
-            window_size.x = window.innerWidth
-            window_size.y = window.innerHeight
+		let raf = 0
 
-            canvas.width  = (window_size.x * dpr)|0
-            canvas.height = (window_size.y * dpr)|0
-        }
+        let measure_time = 0
+        let resized = true
 
-		let raf = -1
+        const onResize = () => {resized = true}
 
-		const render = () => {
+		const render = (time: number) => {
 
+            let needs_remeasure = time-measure_time > 4000 || resized
+
+            if (needs_remeasure) {
+                measure_time = time
+                resized = false
+                
+                dpr = Math.min(2, Math.max(1, window.devicePixelRatio))
+
+                window_size.x = window.innerWidth
+                window_size.y = window.innerHeight
+
+                canvas.width  = (window_size.x * dpr)|0
+                canvas.height = (window_size.y * dpr)|0
+            }
+            
 			ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 			ctx.clearRect(0, 0, window_size.x, window_size.y)
+            
+            if (needs_remeasure) {
+                font_size.y = parseFloat(window.getComputedStyle(document.body).fontSize)
+                ctx.font = font_size.y+'px monospace'
+                font_size.x = ctx.measureText('M').width
+            }
 
-			const camera = editor.getCamera()
+            let page_rect = editor.getViewportPageBounds()
+            let camera = editor.getCamera()
+
+            let cell_size = new Vec(font_size.x*camera.z, font_size.y*camera.z)
+
+            let rows = page_rect.h/font_size.y
+            let cols = page_rect.w/font_size.x
+
+            /*
+             render grid lines
+            */
+            let line_width = Math.min(2, 1*camera.z - 0.4)
+            if (line_width > 0) {
+                ctx.beginPath()
+                ctx.strokeStyle = 'rgba(128, 128, 128, 0.2)'
+                ctx.lineWidth = line_width
+    
+                // vertical lines
+                for (let i = 0; i <= cols; i++) {
+                    ctx.moveTo(i * cell_size.x, 0)
+                    ctx.lineTo(i * cell_size.x, cell_size.y*rows)
+                }
+    
+                // horizontal lines
+                for (let i = 0; i <= rows; i++) {
+                    ctx.moveTo(0,                i * cell_size.y)
+                    ctx.lineTo(cell_size.x*cols, i * cell_size.y)
+                }
+    
+                ctx.stroke()
+            }
+
+			
 			ctx.scale(camera.z, camera.z)
 			ctx.translate(camera.x, camera.y)
 
-			const renderingShapes = editor.getRenderingShapes()
-			const theme = Tldraw.getDefaultColorTheme({isDarkMode: editor.user.getIsDarkMode()})
-			const currentPageId = editor.getCurrentPageId()
+			// console.log(
+            //     JSON.stringify(editor.getViewportPageBounds()),
+            //     JSON.stringify(editor.getViewportScreenBounds()),
+            // )
 
-			for (const {shape, opacity} of renderingShapes) {
+			const shapes = editor.getRenderingShapes()
+			const theme = Tldraw.getDefaultColorTheme({isDarkMode: editor.user.getIsDarkMode()})
+			const pageId = editor.getCurrentPageId()
+
+			for (const {shape, opacity} of shapes) {
                 
 				const maskedPageBounds = editor.getShapeMaskedPageBounds(shape)
 				if (!maskedPageBounds) continue
 				ctx.save()
 
-				if (shape.parentId !== currentPageId) {
+				if (shape.parentId !== pageId) {
 					ctx.beginPath()
 					ctx.rect(
 						maskedPageBounds.minX,
@@ -93,7 +149,7 @@ function CustomBackground(): React.ReactNode {
 					}
 				}
                 else if (editor.isShapeOfType<Tldraw.TLArrowShape>(shape, 'arrow')) {
-                    
+
                     // Draw an arrow shape
                     const start = shape.props.start
                     const end = shape.props.end
@@ -134,11 +190,9 @@ function CustomBackground(): React.ReactNode {
 			raf = requestAnimationFrame(render)
 		}
 
-		render()
+		requestAnimationFrame(render)
 
         window.addEventListener('resize', onResize)
-        setTimeout(onResize)
-        onResize()
 
 		return () => {
 			cancelAnimationFrame(raf)
