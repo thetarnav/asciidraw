@@ -64,28 +64,31 @@ function CustomBackground(): React.ReactNode {
 
             let cell_size = new Vec(font_size.x*camera.z, font_size.y*camera.z)
 
-            let rows = page_rect.h/font_size.y
-            let cols = page_rect.w/font_size.x
+            let rows = Math.ceil(page_rect.h/font_size.y)
+            let cols = Math.ceil(page_rect.w/font_size.x)
 
             /*
              render grid lines
             */
             let line_width = Math.min(2, 1*camera.z - 0.4)
-            if (line_width > 0) {
+            if (line_width > 0.1) {
                 ctx.beginPath()
                 ctx.strokeStyle = 'rgba(128, 128, 128, 0.2)'
                 ctx.lineWidth = line_width
+
+                let pos_y = -(page_rect.y%cell_size.y)
+                let pos_x = -(page_rect.x%cell_size.x)
     
                 // vertical lines
                 for (let i = 0; i <= cols; i++) {
-                    ctx.moveTo(i * cell_size.x, 0)
-                    ctx.lineTo(i * cell_size.x, cell_size.y*rows)
+                    ctx.moveTo(pos_x + i*cell_size.x, 0)
+                    ctx.lineTo(pos_x + i*cell_size.x, cell_size.y*rows)
                 }
     
                 // horizontal lines
                 for (let i = 0; i <= rows; i++) {
-                    ctx.moveTo(0,                i * cell_size.y)
-                    ctx.lineTo(cell_size.x*cols, i * cell_size.y)
+                    ctx.moveTo(0,                pos_y + i*cell_size.y)
+                    ctx.lineTo(cell_size.x*cols, pos_y + i*cell_size.y)
                 }
     
                 ctx.stroke()
