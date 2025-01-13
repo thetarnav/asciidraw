@@ -24,6 +24,6 @@
 		"forceConsistentCasingInFileNames": true,
 		"noUncheckedSideEffectImports": true,
 	},
-	"include": ["vite.condig.ts", "eslint.config.js"]
+	"include": ["vite.condig.ts"]
 }
 
