@@ -70,14 +70,15 @@ function CustomBackground(): React.ReactNode {
             /*
              render grid lines
             */
-            let line_width = Math.min(2, 1*camera.z - 0.4)
+            let line_width = Math.min(2, camera.z/1.8 - 0.3)
             if (line_width > 0.1) {
+
                 ctx.beginPath()
                 ctx.strokeStyle = 'rgba(128, 128, 128, 0.2)'
                 ctx.lineWidth = line_width
-
-                let pos_y = -(page_rect.y%cell_size.y)
-                let pos_x = -(page_rect.x%cell_size.x)
+                
+                let pos_y = -(page_rect.y%font_size.y) * camera.z
+                let pos_x = -(page_rect.x%font_size.x) * camera.z
     
                 // vertical lines
                 for (let i = 0; i <= cols; i++) {
@@ -93,6 +94,13 @@ function CustomBackground(): React.ReactNode {
     
                 ctx.stroke()
             }
+
+            // draw rows and cols count in bottom right corner
+            ctx.font = '16px monospace'
+            ctx.fillStyle = 'rgba(128, 128, 128, 0.6)'
+            const text = `${rows}×${cols}`
+            const metrics = ctx.measureText(text)
+            ctx.fillText(text, window_size.x - metrics.width - 100, window_size.y - 100)
 
 			
 			ctx.scale(camera.z, camera.z)
