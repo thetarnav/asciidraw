@@ -2,8 +2,42 @@ import * as React from 'react'
 import * as Tldraw from 'tldraw'
 
 import {
-    Vec,
+    Vec, VecLike,
+    Mat, MatLike,
 } from 'tldraw'
+
+/**
+ * Mutating version of `Tldraw.Mat.applyToPoint`
+ */
+function transform(vec: VecLike, matrix: MatLike): void {
+    let {x, y} = vec
+    vec.x = x * matrix.a + y * matrix.c + matrix.e
+    vec.y = x * matrix.b + y * matrix.d + matrix.f
+}
+
+type Union<T> = {[K in keyof T]: UnionMember<T, K>}[keyof T]
+
+type UnionMember<T, K extends keyof T> = {kind: K, data: T[K]}
+
+type Shapes = {
+    draw:      Tldraw.TLDrawShape
+    arrow:     Tldraw.TLArrowShape
+    geo:       Tldraw.TLGeoShape
+    frame:     Tldraw.TLFrameShape
+    embed:     Tldraw.TLEmbedShape
+    group:     Tldraw.TLGroupShape    
+    highlight: Tldraw.TLHighlightShape
+    image:     Tldraw.TLImageShape
+    line:      Tldraw.TLLineShape
+    note:      Tldraw.TLNoteShape
+    video:     Tldraw.TLVideoShape
+}
+
+type Shape = Union<Shapes>
+
+function getShape(shape: Tldraw.TLShape): Shape {
+    return {kind: shape.type, data: shape} as any
+}
 
 function CustomBackground(): React.ReactNode {
 
@@ -32,6 +66,31 @@ function CustomBackground(): React.ReactNode {
         let resized = true
 
         const onResize = () => {resized = true}
+
+
+        let _vec = new Vec // reuse object
+
+        function drawGeometry(
+            vertices: VecLike[],
+            mat:      MatLike,
+            close:    boolean,
+        ) {
+            if (vertices.length > 1) {
+                _vec.setTo(vertices[0])
+                transform(_vec, mat)
+                ctx.moveTo(_vec.x, _vec.y)
+                for (let i = 1; i < vertices.length; i++) {
+                    _vec.setTo(vertices[i])
+                    transform(_vec, mat)
+                    ctx.lineTo(_vec.x, _vec.y)
+                }
+                if (close) {
+                    _vec.setTo(vertices[0])
+                    transform(_vec, mat)
+                    ctx.lineTo(_vec.x, _vec.y)
+                }
+            }
+        }
 
 		const render = (time: number) => {
 
@@ -95,6 +154,13 @@ function CustomBackground(): React.ReactNode {
                 ctx.stroke()
             }
 
+            type Cell = {
+                char:  string
+                shape: Tldraw.TLShapeId
+            }
+
+            let matrix: (undefined | null | Cell)[] = new Array(rows*cols)
+
             // draw rows and cols count in bottom right corner
             ctx.font = '16px monospace'
             ctx.fillStyle = 'rgba(128, 128, 128, 0.6)'
@@ -108,86 +174,70 @@ function CustomBackground(): React.ReactNode {
 
 			let shapes = editor.getRenderingShapes()
 			let theme = Tldraw.getDefaultColorTheme({isDarkMode: editor.user.getIsDarkMode()})
-			let pageId = editor.getCurrentPageId()
 
-			for (let {shape, opacity} of shapes) {
+
+			for (let rendering_shape of shapes) {
+                let shape = getShape(rendering_shape.shape)
                 
-				let maskedPageBounds = editor.getShapeMaskedPageBounds(shape)
-				if (maskedPageBounds == null) continue
 				ctx.save()
-
-				if (shape.parentId !== pageId) {
-					ctx.beginPath()
-					ctx.rect(
-						maskedPageBounds.minX,
-						maskedPageBounds.minY,
-						maskedPageBounds.width,
-						maskedPageBounds.height
-					)
-					ctx.clip()
-				}
 
 				ctx.beginPath()
 
-				ctx.globalAlpha = opacity
+				ctx.globalAlpha = rendering_shape.opacity
 
-				const transform = editor.getShapePageTransform(shape.id)
-				ctx.transform(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f)
+				let mat = editor.getShapePageTransform(rendering_shape.id)
 
-                // Draw a freehand shape
-				if (editor.isShapeOfType<Tldraw.TLDrawShape>(shape, 'draw')) {
-
-                    let geometry = editor.getShapeGeometry(shape)
-                    if (geometry.vertices.length > 1) {
-                        let i = 0
-                        let v = geometry.vertices[i]
-                        ctx.moveTo(v.x, v.y)
-                        for (i++; i < geometry.vertices.length; i++) {
-                            v = geometry.vertices[i]
-                            ctx.lineTo(v.x, v.y)
-                        }
+                switch (shape.kind) {
+                case 'draw': {
+                    let geometry = editor.getShapeGeometry(shape.data)
+                    drawGeometry(geometry.vertices, mat, false)
+                    ctx.strokeStyle = theme[shape.data.props.color].solid
+                    ctx.lineWidth = 4
+                    ctx.stroke()
+                    if (shape.data.props.fill !== 'none' && shape.data.props.isClosed) {
+                        ctx.fillStyle = theme[shape.data.props.color].semi
+                        ctx.fill()
                     }
-
-					ctx.strokeStyle = theme[shape.props.color].solid
-					ctx.lineWidth = 4
-					ctx.stroke()
-					if (shape.props.fill !== 'none' && shape.props.isClosed) {
-						ctx.fillStyle = theme[shape.props.color].semi
-						ctx.fill()
-					}
-				}
-                // Draw an arrow shape
-                else if (editor.isShapeOfType<Tldraw.TLArrowShape>(shape, 'arrow')) {
-
-                    let geometry = editor.getShapeGeometry(shape)
-                    if (geometry.vertices.length > 1) {
-                        let i = 0
-                        let v = geometry.vertices[i]
-                        ctx.moveTo(v.x, v.y)
-                        for (i++; i < geometry.vertices.length; i++) {
-                            v = geometry.vertices[i]
-                            ctx.lineTo(v.x, v.y)
-                        }
-                    }
-
-                    ctx.strokeStyle = theme[shape.props.color].solid
+                    break
+                }
+                case 'arrow': {
+                    let geometry = editor.getShapeGeometry(shape.data)
+                    drawGeometry(geometry.vertices, mat, false)
+                    ctx.strokeStyle = theme[shape.data.props.color].solid
                     ctx.lineWidth = 2
                     ctx.stroke()
+                    break
                 }
-                // Draw a geo shape
-                else if (editor.isShapeOfType<Tldraw.TLGeoShape>(shape, 'geo')) {
-					const bounds = editor.getShapeGeometry(shape).bounds
-					ctx.strokeStyle = theme[shape.props.color].solid
-					ctx.lineWidth = 2
-					ctx.strokeRect(bounds.minX, bounds.minY, bounds.width, bounds.height)
-				}
-                // Draw any other kind of shape
-                else {
-					const bounds = editor.getShapeGeometry(shape).bounds
-					ctx.strokeStyle = 'black'
-					ctx.lineWidth = 2
-					ctx.strokeRect(bounds.minX, bounds.minY, bounds.width, bounds.height)
-				}
+                case 'geo': {
+                    let geometry = editor.getShapeGeometry(shape.data)
+                    drawGeometry(geometry.vertices, mat, true)
+                    ctx.strokeStyle = theme[shape.data.props.color].solid
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+                    break
+                }
+                case 'line': {
+                    let geometry = editor.getShapeGeometry(shape.data)
+                    drawGeometry(geometry.vertices, mat, false)
+                    ctx.strokeStyle = theme[shape.data.props.color].solid
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+                    break
+                }
+                case 'frame':
+                case 'embed':
+                case 'group':
+                case 'highlight':
+                case 'image':
+                case 'note':
+                case 'video': {
+                    break
+                }
+                default: {
+                    shape satisfies never
+                }
+                }
+
 				ctx.restore()
 			}
 
