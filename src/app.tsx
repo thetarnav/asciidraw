@@ -6,6 +6,9 @@ import {
     Mat, MatLike,
 } from 'tldraw'
 
+
+const TAU = 6.283185307179586
+
 /**
  * Mutating version of `Tldraw.Mat.applyToPoint`
  */
@@ -130,6 +133,9 @@ function CustomBackground(): React.ReactNode {
             let rows = Math.ceil(page_rect.h/font_size.y)
             let cols = Math.ceil(page_rect.w/font_size.x)
 
+            let grid_pos_y = -(page_rect.y%font_size.y) * camera.z
+            let grid_pos_x = -(page_rect.x%font_size.x) * camera.z
+
             /*
              render grid lines
             */
@@ -140,19 +146,17 @@ function CustomBackground(): React.ReactNode {
                 ctx.strokeStyle = 'rgba(128, 128, 128, 0.2)'
                 ctx.lineWidth = line_width
                 
-                let pos_y = -(page_rect.y%font_size.y) * camera.z
-                let pos_x = -(page_rect.x%font_size.x) * camera.z
     
                 // vertical lines
                 for (let i = 0; i <= cols; i++) {
-                    ctx.moveTo(pos_x + i*cell_size.x, 0)
-                    ctx.lineTo(pos_x + i*cell_size.x, cell_size.y*rows)
+                    ctx.moveTo(grid_pos_x + i*cell_size.x, 0)
+                    ctx.lineTo(grid_pos_x + i*cell_size.x, cell_size.y*rows)
                 }
     
                 // horizontal lines
                 for (let i = 0; i <= rows; i++) {
-                    ctx.moveTo(0,                pos_y + i*cell_size.y)
-                    ctx.lineTo(cell_size.x*cols, pos_y + i*cell_size.y)
+                    ctx.moveTo(0,                grid_pos_y + i*cell_size.y)
+                    ctx.lineTo(cell_size.x*cols, grid_pos_y + i*cell_size.y)
                 }
     
                 ctx.stroke()
@@ -200,6 +204,30 @@ function CustomBackground(): React.ReactNode {
                     if (shape.data.props.fill !== 'none' && shape.data.props.isClosed) {
                         ctx.fillStyle = theme[shape.data.props.color].semi
                         ctx.fill()
+                    }
+
+                    for (let v of geometry.vertices) {
+                        _vec.setTo(v)
+                        transform(_vec, mat)
+                        transform(_vec, camera_mat)
+                        v = _vec
+
+                        let col = Math.floor((v.x-grid_pos_x)/cell_size.x)
+                        let row = Math.floor((v.y-grid_pos_y)/cell_size.y)
+
+                        ctx.fillStyle = 'pink'
+                        ctx.fillRect(
+                            grid_pos_x + col*cell_size.x, grid_pos_y + row*cell_size.y,
+                            cell_size.x, cell_size.y,
+                        )
+                        
+                        ctx.beginPath()
+                        ctx.arc(v.x, v.y, 3, 0, TAU)
+                        ctx.fillStyle = 'red'
+                        ctx.fill()
+                        
+                        continue
+
                     }
 
                     break
