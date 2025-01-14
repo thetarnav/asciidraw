@@ -42,6 +42,20 @@ function getShape(shape: Tldraw.TLShape): Shape {
     return {kind: shape.type, data: shape} as any
 }
 
+function ccw_xy(Ax: number, Ay: number, Bx: number, By: number, Cx: number, Cy: number) {
+    return (Cy-Ay) * (Bx-Ax) > (By-Ay) * (Cx-Ax)
+}
+
+function ccw_segments_intersecting_xy(
+    Ax: number, Ay: number,
+    Bx: number, By: number,
+    Cx: number, Cy: number,
+    Dx: number, Dy: number,
+) {
+    return ccw_xy(Ax, Ay, Cx, Cy, Dx, Dy) !== ccw_xy(Bx, By, Cx, Cy, Dx, Dy) && 
+           ccw_xy(Ax, Ay, Bx, By, Cx, Cy) !== ccw_xy(Ax, Ay, Bx, By, Dx, Dy)
+}
+
 function CustomBackground(): React.ReactNode {
 
 	const editor = Tldraw.useEditor()
@@ -196,38 +210,84 @@ function CustomBackground(): React.ReactNode {
 
                     let geometry = editor.getShapeGeometry(shape.data)
                     let mat = editor.getShapePageTransform(rendering_shape.id)
-                    drawGeometry(geometry.vertices, camera_mat, mat, false)
 
-                    ctx.strokeStyle = theme[shape.data.props.color].solid
-                    ctx.lineWidth = 4
-                    ctx.stroke()
-                    if (shape.data.props.fill !== 'none' && shape.data.props.isClosed) {
-                        ctx.fillStyle = theme[shape.data.props.color].semi
-                        ctx.fill()
+                    if (geometry.vertices.length <= 1) {
+                        console.log('single vertex')
+                        break
                     }
 
-                    for (let v of geometry.vertices) {
-                        _vec.setTo(v)
-                        transform(_vec, mat)
-                        transform(_vec, camera_mat)
-                        v = _vec
+                    // ctx.strokeStyle = theme[shape.data.props.color].solid
+                    // ctx.lineWidth = 4
+                    // ctx.stroke()
+                    // if (shape.data.props.fill !== 'none' && shape.data.props.isClosed) {
+                    //     ctx.fillStyle = theme[shape.data.props.color].semi
+                    //     ctx.fill()
+                    // }
 
-                        let col = Math.floor((v.x-grid_pos_x)/cell_size.x)
-                        let row = Math.floor((v.y-grid_pos_y)/cell_size.y)
+                    let v         = new Vec
+                    let cell      = new Vec
+                    let prev_v    = new Vec
+                    let prev_cell = new Vec
 
-                        ctx.fillStyle = 'pink'
-                        ctx.fillRect(
-                            grid_pos_x + col*cell_size.x, grid_pos_y + row*cell_size.y,
-                            cell_size.x, cell_size.y,
-                        )
+                    for (let vi = 0; vi < geometry.vertices.length; vi++) {
+                        
+                        prev_v.setTo(v)
+                        prev_cell.setTo(cell)
+
+                        v.setTo(geometry.vertices[vi])
+                        transform(v, mat)
+                        transform(v, camera_mat)
+
+                        cell.x = Math.floor((v.x-grid_pos_x)/cell_size.x)
+                        cell.y = Math.floor((v.y-grid_pos_y)/cell_size.y)
+
+                        if (vi === 0) {
+                            continue
+                        }
+
+                        let cx = prev_cell.x
+                        let cy = prev_cell.y
+
+                        for (;;) {
+
+                            ctx.fillStyle = 'pink'
+                            ctx.fillRect(
+                                grid_pos_x + cx*cell_size.x, grid_pos_y + cy*cell_size.y,
+                                cell_size.x, cell_size.y,
+                            )
+
+                            let dx = Math.sign(cell.x-cx)
+                            let dy = Math.sign(cell.y-cy)
+
+                            /* Vertical */
+                            if (dy !== 0 && ccw_segments_intersecting_xy(
+                                prev_v.x, prev_v.y,
+                                v.x, v.y,
+                                grid_pos_x + (cx+0)*cell_size.x, grid_pos_y + (cy + (dy+1)/2)*cell_size.y,
+                                grid_pos_x + (cx+1)*cell_size.x, grid_pos_y + (cy + (dy+1)/2)*cell_size.y,
+                            )) {
+                                cy += dy
+                                continue
+                            }
+
+                            /* Horizontal */
+                            if (dx !== 0 && ccw_segments_intersecting_xy(
+                                prev_v.x, prev_v.y,
+                                v.x, v.y,
+                                grid_pos_x + (cx + (dx+1)/2)*cell_size.x, grid_pos_y + (cy+0)*cell_size.y,
+                                grid_pos_x + (cx + (dx+1)/2)*cell_size.x, grid_pos_y + (cy+1)*cell_size.y,
+                            )) {
+                                cx += dx
+                                continue
+                            }
+
+                            break
+                        }
                         
                         ctx.beginPath()
                         ctx.arc(v.x, v.y, 3, 0, TAU)
                         ctx.fillStyle = 'red'
                         ctx.fill()
-                        
-                        continue
-
                     }
 
                     break
