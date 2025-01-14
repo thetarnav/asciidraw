@@ -240,6 +240,13 @@ function CustomBackground(): React.ReactNode {
 
                         cell.x = Math.floor((v.x-grid_pos_x) / cell_size.x)
                         cell.y = Math.floor((v.y-grid_pos_y) / cell_size.y)
+                        
+                        {
+                            ctx.beginPath()
+                            ctx.arc(v.x, v.y, 3, 0, TAU)
+                            ctx.fillStyle = 'rgb(0, 0, 255)'
+                            ctx.fill()
+                        }
 
                         if (vi === 0)
                             continue
@@ -270,11 +277,6 @@ function CustomBackground(): React.ReactNode {
                                 cx += dx
                             }
                         }
-                        
-                        // ctx.beginPath()
-                        // ctx.arc(v.x, v.y, 3, 0, TAU)
-                        // ctx.fillStyle = 'rgb(0, 0, 255)'
-                        // ctx.fill()
                     }
 
                     break
@@ -348,7 +350,7 @@ function CustomBackground(): React.ReactNode {
                 if (char) {
                     ctx.fillText(
                         char,
-                        grid_pos_x + (x+1) * cell_size.x,
+                        grid_pos_x + x * cell_size.x,
                         grid_pos_y + (y+1) * cell_size.y)
                 }
             }
