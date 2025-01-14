@@ -72,21 +72,25 @@ function CustomBackground(): React.ReactNode {
 
         function drawGeometry(
             vertices: VecLike[],
+            camera:   MatLike,
             mat:      MatLike,
             close:    boolean,
         ) {
             if (vertices.length > 1) {
                 _vec.setTo(vertices[0])
                 transform(_vec, mat)
+                transform(_vec, camera)
                 ctx.moveTo(_vec.x, _vec.y)
                 for (let i = 1; i < vertices.length; i++) {
                     _vec.setTo(vertices[i])
                     transform(_vec, mat)
+                    transform(_vec, camera)
                     ctx.lineTo(_vec.x, _vec.y)
                 }
                 if (close) {
                     _vec.setTo(vertices[0])
                     transform(_vec, mat)
+                    transform(_vec, camera)
                     ctx.lineTo(_vec.x, _vec.y)
                 }
             }
@@ -168,9 +172,10 @@ function CustomBackground(): React.ReactNode {
             let metrics = ctx.measureText(text)
             ctx.fillText(text, window_size.x - metrics.width - 100, window_size.y - 100)
 
-			
-			ctx.scale(camera.z, camera.z)
-			ctx.translate(camera.x, camera.y)
+            let camera_mat = new Mat(
+                camera.z, 0, 0,
+                camera.z, camera.x*camera.z, camera.y*camera.z,
+            )
 
 			let shapes = editor.getRenderingShapes()
 			let theme = Tldraw.getDefaultColorTheme({isDarkMode: editor.user.getIsDarkMode()})
@@ -178,19 +183,17 @@ function CustomBackground(): React.ReactNode {
 
 			for (let rendering_shape of shapes) {
                 let shape = getShape(rendering_shape.shape)
-                
-				ctx.save()
-
-				ctx.beginPath()
-
-				ctx.globalAlpha = rendering_shape.opacity
-
-				let mat = editor.getShapePageTransform(rendering_shape.id)
 
                 switch (shape.kind) {
                 case 'draw': {
+
+                    ctx.beginPath()
+                    ctx.globalAlpha = rendering_shape.opacity
+
                     let geometry = editor.getShapeGeometry(shape.data)
-                    drawGeometry(geometry.vertices, mat, false)
+                    let mat = editor.getShapePageTransform(rendering_shape.id)
+                    drawGeometry(geometry.vertices, camera_mat, mat, false)
+
                     ctx.strokeStyle = theme[shape.data.props.color].solid
                     ctx.lineWidth = 4
                     ctx.stroke()
@@ -198,30 +201,52 @@ function CustomBackground(): React.ReactNode {
                         ctx.fillStyle = theme[shape.data.props.color].semi
                         ctx.fill()
                     }
+
                     break
                 }
                 case 'arrow': {
+
+                    ctx.beginPath()
+                    ctx.globalAlpha = rendering_shape.opacity
+
                     let geometry = editor.getShapeGeometry(shape.data)
-                    drawGeometry(geometry.vertices, mat, false)
+                    let mat = editor.getShapePageTransform(rendering_shape.id)
+                    drawGeometry(geometry.vertices, camera_mat, mat, false)
+
                     ctx.strokeStyle = theme[shape.data.props.color].solid
                     ctx.lineWidth = 2
                     ctx.stroke()
+
                     break
                 }
                 case 'geo': {
+
+                    ctx.beginPath()
+                    ctx.globalAlpha = rendering_shape.opacity
+
                     let geometry = editor.getShapeGeometry(shape.data)
-                    drawGeometry(geometry.vertices, mat, true)
+                    let mat = editor.getShapePageTransform(rendering_shape.id)
+                    drawGeometry(geometry.vertices, camera_mat, mat, true)
+
                     ctx.strokeStyle = theme[shape.data.props.color].solid
                     ctx.lineWidth = 2
                     ctx.stroke()
+
                     break
                 }
                 case 'line': {
+
+                    ctx.beginPath()
+                    ctx.globalAlpha = rendering_shape.opacity
+
                     let geometry = editor.getShapeGeometry(shape.data)
-                    drawGeometry(geometry.vertices, mat, false)
+                    let mat = editor.getShapePageTransform(rendering_shape.id)
+                    drawGeometry(geometry.vertices, camera_mat, mat, false)
+
                     ctx.strokeStyle = theme[shape.data.props.color].solid
                     ctx.lineWidth = 2
                     ctx.stroke()
+
                     break
                 }
                 case 'frame':
@@ -237,8 +262,6 @@ function CustomBackground(): React.ReactNode {
                     shape satisfies never
                 }
                 }
-
-				ctx.restore()
 			}
 
 			raf = requestAnimationFrame(render)
