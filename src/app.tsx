@@ -243,7 +243,7 @@ function CustomBackground(): React.ReactNode {
                         
                         {
                             ctx.beginPath()
-                            ctx.arc(v.x, v.y, 3, 0, TAU)
+                            ctx.arc(v.x, v.y, camera.z, 0, TAU)
                             ctx.fillStyle = 'rgb(0, 0, 255)'
                             ctx.fill()
                         }
@@ -256,12 +256,18 @@ function CustomBackground(): React.ReactNode {
 
                         for (;;) {
 
-                            if (cx >= 0 && cx < cols && cy >= 0 && cy < rows) {
-                                matrix[cx + cy*cols] = '#'
-                            }
-
                             let dx = Math.sign(cell.x-cx)
                             let dy = Math.sign(cell.y-cy)
+
+                            if (cx >= 0 && cx < cols &&
+                                cy >= 0 && cy < rows
+                            ) {
+                                if      (dx === 0 && dy === 0) matrix[cx + cy*cols] = '+'
+                                else if (dy === 0)             matrix[cx + cy*cols] = '―'
+                                else if (dx === 0)             matrix[cx + cy*cols] = '|'
+                                else if (dx != dy)             matrix[cx + cy*cols] = '/'
+                                else                           matrix[cx + cy*cols] = '\\'
+                            }
                             
                             if (dx === 0 && dy === 0)
                                 break
