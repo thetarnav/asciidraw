@@ -18,6 +18,20 @@ function transform(vec: VecLike, matrix: MatLike): void {
     vec.y = x * matrix.b + y * matrix.d + matrix.f
 }
 
+function ccw_xy(Ax: number, Ay: number, Bx: number, By: number, Cx: number, Cy: number) {
+    return (Cy-Ay) * (Bx-Ax) > (By-Ay) * (Cx-Ax)
+}
+
+function ccw_segments_intersecting_xy(
+    Ax: number, Ay: number,
+    Bx: number, By: number,
+    Cx: number, Cy: number,
+    Dx: number, Dy: number,
+) {
+    return ccw_xy(Ax, Ay, Cx, Cy, Dx, Dy) !== ccw_xy(Bx, By, Cx, Cy, Dx, Dy) && 
+           ccw_xy(Ax, Ay, Bx, By, Cx, Cy) !== ccw_xy(Ax, Ay, Bx, By, Dx, Dy)
+}
+
 type Union<T> = {[K in keyof T]: UnionMember<T, K>}[keyof T]
 
 type UnionMember<T, K extends keyof T> = {kind: K, data: T[K]}
@@ -40,20 +54,6 @@ type Shape = Union<Shapes>
 
 function getShape(shape: Tldraw.TLShape): Shape {
     return {kind: shape.type, data: shape} as any
-}
-
-function ccw_xy(Ax: number, Ay: number, Bx: number, By: number, Cx: number, Cy: number) {
-    return (Cy-Ay) * (Bx-Ax) > (By-Ay) * (Cx-Ax)
-}
-
-function ccw_segments_intersecting_xy(
-    Ax: number, Ay: number,
-    Bx: number, By: number,
-    Cx: number, Cy: number,
-    Dx: number, Dy: number,
-) {
-    return ccw_xy(Ax, Ay, Cx, Cy, Dx, Dy) !== ccw_xy(Bx, By, Cx, Cy, Dx, Dy) && 
-           ccw_xy(Ax, Ay, Bx, By, Cx, Cy) !== ccw_xy(Ax, Ay, Bx, By, Dx, Dy)
 }
 
 function CustomBackground(): React.ReactNode {
