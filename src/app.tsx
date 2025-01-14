@@ -238,19 +238,18 @@ function CustomBackground(): React.ReactNode {
                         transform(v, mat)
                         transform(v, camera_mat)
 
-                        cell.x = Math.floor((v.x-grid_pos_x)/cell_size.x)
-                        cell.y = Math.floor((v.y-grid_pos_y)/cell_size.y)
+                        cell.x = Math.floor((v.x-grid_pos_x) / cell_size.x)
+                        cell.y = Math.floor((v.y-grid_pos_y) / cell_size.y)
 
-                        if (vi === 0) {
+                        if (vi === 0)
                             continue
-                        }
 
                         let cx = prev_cell.x
                         let cy = prev_cell.y
 
                         for (;;) {
 
-                            ctx.fillStyle = 'pink'
+                            ctx.fillStyle = 'rgba(255, 0, 0, 0.4)'
                             ctx.fillRect(
                                 grid_pos_x + cx*cell_size.x, grid_pos_y + cy*cell_size.y,
                                 cell_size.x, cell_size.y,
@@ -258,35 +257,25 @@ function CustomBackground(): React.ReactNode {
 
                             let dx = Math.sign(cell.x-cx)
                             let dy = Math.sign(cell.y-cy)
+                            
+                            if (dx === 0 && dy === 0)
+                                break
 
-                            /* Vertical */
                             if (dy !== 0 && ccw_segments_intersecting_xy(
                                 prev_v.x, prev_v.y,
                                 v.x, v.y,
-                                grid_pos_x + (cx+0)*cell_size.x, grid_pos_y + (cy + (dy+1)/2)*cell_size.y,
-                                grid_pos_x + (cx+1)*cell_size.x, grid_pos_y + (cy + (dy+1)/2)*cell_size.y,
+                                grid_pos_x + (cx+1) * cell_size.x, grid_pos_y + (cy + (dy+1)/2) * cell_size.y,
+                                grid_pos_x + (cx+0) * cell_size.x, grid_pos_y + (cy + (dy+1)/2) * cell_size.y,
                             )) {
                                 cy += dy
-                                continue
-                            }
-
-                            /* Horizontal */
-                            if (dx !== 0 && ccw_segments_intersecting_xy(
-                                prev_v.x, prev_v.y,
-                                v.x, v.y,
-                                grid_pos_x + (cx + (dx+1)/2)*cell_size.x, grid_pos_y + (cy+0)*cell_size.y,
-                                grid_pos_x + (cx + (dx+1)/2)*cell_size.x, grid_pos_y + (cy+1)*cell_size.y,
-                            )) {
+                            } else {
                                 cx += dx
-                                continue
                             }
-
-                            break
                         }
                         
                         ctx.beginPath()
                         ctx.arc(v.x, v.y, 3, 0, TAU)
-                        ctx.fillStyle = 'red'
+                        ctx.fillStyle = 'rgb(0, 0, 255)'
                         ctx.fill()
                     }
 
