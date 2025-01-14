@@ -144,11 +144,11 @@ function CustomBackground(): React.ReactNode {
 
             let cell_size = new Vec(font_size.x*camera.z, font_size.y*camera.z)
 
-            let rows = Math.ceil(page_rect.h/font_size.y)
-            let cols = Math.ceil(page_rect.w/font_size.x)
+            let rows = Math.ceil(page_rect.h/font_size.y) + 1
+            let cols = Math.ceil(page_rect.w/font_size.x) + 1
 
-            let grid_pos_y = -(page_rect.y%font_size.y) * camera.z
-            let grid_pos_x = -(page_rect.x%font_size.x) * camera.z
+            let grid_pos_y = (-font_size.y -(page_rect.y%font_size.y)) * camera.z
+            let grid_pos_x = (-font_size.x -(page_rect.x%font_size.x)) * camera.z
 
             /*
              render grid lines
@@ -176,12 +176,12 @@ function CustomBackground(): React.ReactNode {
                 ctx.stroke()
             }
 
-            type Cell = {
-                char:  string
-                shape: Tldraw.TLShapeId
-            }
+            // type Cell = {
+            //     char:  string
+            //     shape: Tldraw.TLShapeId
+            // }
 
-            let matrix: (undefined | null | Cell)[] = new Array(rows*cols)
+            let matrix: (undefined | null | string)[] = new Array(rows*cols)
 
             // draw rows and cols count in bottom right corner
             ctx.font = '16px monospace'
@@ -249,11 +249,9 @@ function CustomBackground(): React.ReactNode {
 
                         for (;;) {
 
-                            ctx.fillStyle = 'rgba(255, 0, 0, 0.4)'
-                            ctx.fillRect(
-                                grid_pos_x + cx*cell_size.x, grid_pos_y + cy*cell_size.y,
-                                cell_size.x, cell_size.y,
-                            )
+                            if (cx >= 0 && cx < cols && cy >= 0 && cy < rows) {
+                                matrix[cx + cy*cols] = '#'
+                            }
 
                             let dx = Math.sign(cell.x-cx)
                             let dy = Math.sign(cell.y-cy)
@@ -273,10 +271,10 @@ function CustomBackground(): React.ReactNode {
                             }
                         }
                         
-                        ctx.beginPath()
-                        ctx.arc(v.x, v.y, 3, 0, TAU)
-                        ctx.fillStyle = 'rgb(0, 0, 255)'
-                        ctx.fill()
+                        // ctx.beginPath()
+                        // ctx.arc(v.x, v.y, 3, 0, TAU)
+                        // ctx.fillStyle = 'rgb(0, 0, 255)'
+                        // ctx.fill()
                     }
 
                     break
@@ -340,6 +338,18 @@ function CustomBackground(): React.ReactNode {
                 }
                 }
 			}
+
+            ctx.font = cell_size.y+'px monospace'
+            ctx.fillStyle = 'black'
+
+            for (let y = 0; y < rows; y++) {
+                let row = ''
+                for (let x = 0; x < cols; x++) {
+                    let char = matrix[x + y * cols]
+                    row += char ?? ' '
+                }
+                ctx.fillText(row, grid_pos_x, grid_pos_y + (y+1) * cell_size.y)
+            }
 
 			raf = requestAnimationFrame(render)
 		}
