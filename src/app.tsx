@@ -343,12 +343,15 @@ function CustomBackground(): React.ReactNode {
             ctx.fillStyle = 'black'
 
             for (let y = 0; y < rows; y++) {
-                let row = ''
-                for (let x = 0; x < cols; x++) {
-                    let char = matrix[x + y * cols]
-                    row += char ?? ' '
+            for (let x = 0; x < cols; x++) {
+                let char = matrix[x + y*cols]
+                if (char) {
+                    ctx.fillText(
+                        char,
+                        grid_pos_x + (x+1) * cell_size.x,
+                        grid_pos_y + (y+1) * cell_size.y)
                 }
-                ctx.fillText(row, grid_pos_x, grid_pos_y + (y+1) * cell_size.y)
+            }
             }
 
 			raf = requestAnimationFrame(render)
