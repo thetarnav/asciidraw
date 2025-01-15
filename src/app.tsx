@@ -328,7 +328,7 @@ function CustomBackground(): React.ReactNode {
                                 }
                                 else {
                                     if (prev_dcy !== 0) {
-                                        char = dcx === dcy ? '\\' : '/'
+                                        char = prev_dcx === prev_dcy ? '\\' : '/'
                                     } else {
                                         char = '―'
                                     }
@@ -363,7 +363,7 @@ function CustomBackground(): React.ReactNode {
                                 }
                                 else {
                                     if (prev_dcx !== 0) {
-                                        char = dcx === dcy ? '\\' : '/'
+                                        char = prev_dcx === prev_dcy ? '\\' : '/'
                                     } else {
                                         char = '|'
                                     }
