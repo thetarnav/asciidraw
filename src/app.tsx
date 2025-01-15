@@ -254,6 +254,17 @@ function CustomBackground(): React.ReactNode {
                         let cx = prev_cell.x
                         let cy = prev_cell.y
 
+                        let char: string
+                        {
+                            let dx = Math.sign(cell.x-cx)
+                            let dy = Math.sign(cell.y-cy)
+                            if      (dx === 0 && dy === 0) char = '+'
+                            else if (dy === 0)             char = '―' // ═ ╌ ╍
+                            else if (dx === 0)             char = '|' // ‖
+                            else if (dx != dy)             char = '/'
+                            else                           char = '\\'
+                        }
+
                         for (;;) {
 
                             let dx = Math.sign(cell.x-cx)
@@ -262,11 +273,7 @@ function CustomBackground(): React.ReactNode {
                             if (cx >= 0 && cx < cols &&
                                 cy >= 0 && cy < rows
                             ) {
-                                if      (dx === 0 && dy === 0) matrix[cx + cy*cols] = '+'
-                                else if (dy === 0)             matrix[cx + cy*cols] = '―'
-                                else if (dx === 0)             matrix[cx + cy*cols] = '|'
-                                else if (dx != dy)             matrix[cx + cy*cols] = '/'
-                                else                           matrix[cx + cy*cols] = '\\'
+                                matrix[cx + cy*cols] = char
                             }
                             
                             if (dx === 0 && dy === 0)
