@@ -56,6 +56,189 @@ function getShape(shape: Tldraw.TLShape): Shape {
     return {kind: shape.type, data: shape} as any
 }
 
+type AsciiMatrix = (null | undefined | string)[]
+
+function drawGeometryAscii(
+    ctx:        CanvasRenderingContext2D,
+    editor:     Tldraw.Editor,
+    shape:      Tldraw.TLShape | Tldraw.TLShapeId,
+    camera_mat: MatLike,
+    cell_size:  VecLike,
+    grid_pos:   VecLike,
+    grid_cells:  VecLike,
+    matrix:     AsciiMatrix,
+) {
+
+    let geometry = editor.getShapeGeometry(shape)
+    let mat = editor.getShapePageTransform(shape)
+
+    if (geometry.vertices.length <= 1) {
+        console.log('single vertex')
+        return
+    }
+
+    // ctx.strokeStyle = theme[shape.data.props.color].solid
+    // if (shape.data.props.fill !== 'none' && shape.data.props.isClosed) {
+    //     ctx.fillStyle = theme[shape.data.props.color].semi
+    //     ctx.fill()
+    // }
+
+    let v         = new Vec
+    let cell      = new Vec
+    let prev_v    = new Vec
+    let prev_cell = new Vec
+
+    for (let vi = 0; vi < geometry.vertices.length; vi++) {
+        
+        prev_v.setTo(v)
+        prev_cell.setTo(cell)
+
+        v.setTo(geometry.vertices[vi])
+        transform(v, mat)
+        transform(v, camera_mat)
+
+        cell.x = Math.floor((v.x-grid_pos.x) / cell_size.x)
+        cell.y = Math.floor((v.y-grid_pos.y) / cell_size.y)
+
+        if (cell.equals(prev_cell)) {
+            v.setTo(prev_v)
+            cell.setTo(prev_cell)
+            continue
+        }
+        
+        {
+            ctx.beginPath()
+            ctx.arc(v.x, v.y, camera_mat.a, 0, TAU)
+            ctx.fillStyle = 'rgb(0, 0, 255)'
+            ctx.fill()
+        }
+
+        if (vi === 0)
+            continue
+
+        let char = '+'
+        let dx = prev_v.x-v.x
+        let dy = prev_v.y-v.y
+        let adx = Math.abs(dx)
+        let ady = Math.abs(dy)
+        let sdx = Math.sign(dx)
+        let sdy = Math.sign(dy)
+        let ad = Math.abs(adx-ady)
+
+        let cx = prev_cell.x
+        let cy = prev_cell.y
+
+        let dcx = 0
+        let dcy = 0
+
+        for (;;) {
+
+            let prev_dcx = dcx
+            let prev_dcy = dcy
+
+            dcx = Math.sign(cell.x-cx)
+            dcy = Math.sign(cell.y-cy)
+            
+            if (dcx === 0 && dcy === 0) {
+                
+                if (cx >= 0 && cx < grid_cells.x &&
+                    cy >= 0 && cy < grid_cells.y
+                ) {
+                    matrix[cx + cy*grid_cells.x] = char
+                }
+
+                break
+            }
+
+            /* Diagonal */
+            if (ad < adx && ad < ady) {
+
+                char = sdx === sdy ? '\\' : '/'
+
+                if (cx >= 0 && cx < grid_cells.x &&
+                    cy >= 0 && cy < grid_cells.y
+                ) {
+                    matrix[cx + cy*grid_cells.x] = char
+                }
+
+                cy += dcy
+                cx += dcx
+            }
+            /* Horizontal */
+            else if (adx > ady) {
+
+                if (dcy !== 0 && ccw_segments_intersecting_xy(
+                    prev_v.x, prev_v.y,
+                    v.x, v.y,
+                    grid_pos.x + (cx+0) * cell_size.x, grid_pos.y + (cy + (dcy+1)/2) * cell_size.y,
+                    grid_pos.x + (cx+1) * cell_size.x, grid_pos.y + (cy + (dcy+1)/2) * cell_size.y,
+                )) {
+                    char = dcx === dcy ? '\\' : '/'
+                    
+                    if (cx >= 0 && cx < grid_cells.x &&
+                        cy >= 0 && cy < grid_cells.y
+                    ) {
+                        matrix[cx + cy*grid_cells.x] = char
+                    }
+
+                    cy += dcy
+                    cx += dcx
+                }
+                else {
+                    if (prev_dcy !== 0) {
+                        char = prev_dcx === prev_dcy ? '\\' : '/'
+                    } else {
+                        char = '―'
+                    }
+                    
+                    if (cx >= 0 && cx < grid_cells.x &&
+                        cy >= 0 && cy < grid_cells.y
+                    ) {
+                        matrix[cx + cy*grid_cells.x] = char
+                    }
+
+                    cx += dcx
+                }
+            }
+            /* Vertical */
+            else {
+                if (dcx !== 0 && ccw_segments_intersecting_xy(
+                    prev_v.x, prev_v.y,
+                    v.x, v.y,
+                    grid_pos.x + (cx + (dcx+1)/2) * cell_size.x, grid_pos.y + (cy+0) * cell_size.y,
+                    grid_pos.x + (cx + (dcx+1)/2) * cell_size.x, grid_pos.y + (cy+1) * cell_size.y,
+                )) {
+                    char = dcx === dcy ? '\\' : '/'
+                    
+                    if (cx >= 0 && cx < grid_cells.x &&
+                        cy >= 0 && cy < grid_cells.y
+                    ) {
+                        matrix[cx + cy*grid_cells.x] = char
+                    }
+
+                    cx += dcx
+                    cy += dcy
+                }
+                else {
+                    if (prev_dcx !== 0) {
+                        char = prev_dcx === prev_dcy ? '\\' : '/'
+                    } else {
+                        char = '|'
+                    }
+                    
+                    if (cx >= 0 && cx < grid_cells.x &&
+                        cy >= 0 && cy < grid_cells.y
+                    ) {
+                        matrix[cx + cy*grid_cells.x] = char
+                    }
+
+                    cy += dcy
+                }
+            }
+        }
+    }
+}
+
 function CustomBackground(): React.ReactNode {
 
 	const editor = Tldraw.useEditor()
@@ -144,11 +327,16 @@ function CustomBackground(): React.ReactNode {
 
             let cell_size = new Vec(font_size.x*camera.z, font_size.y*camera.z)
 
-            let rows = Math.ceil(page_rect.h/font_size.y) + 1
-            let cols = Math.ceil(page_rect.w/font_size.x) + 1
+            // cols x rows
+            let grid_cells = new Vec(
+                Math.ceil(page_rect.w/font_size.x) + 1,
+                Math.ceil(page_rect.h/font_size.y) + 1,
+            )
 
-            let grid_pos_y = (-font_size.y -(page_rect.y%font_size.y)) * camera.z
-            let grid_pos_x = (-font_size.x -(page_rect.x%font_size.x)) * camera.z
+            let grid_pos = new Vec(
+                (-font_size.x -(page_rect.x%font_size.x)) * camera.z,
+                (-font_size.y -(page_rect.y%font_size.y)) * camera.z,
+            )
 
             /*
              render grid lines
@@ -162,31 +350,26 @@ function CustomBackground(): React.ReactNode {
                 
     
                 // vertical lines
-                for (let i = 0; i <= cols; i++) {
-                    ctx.moveTo(grid_pos_x + i*cell_size.x, 0)
-                    ctx.lineTo(grid_pos_x + i*cell_size.x, cell_size.y*rows)
+                for (let i = 0; i <= grid_cells.x; i++) {
+                    ctx.moveTo(grid_pos.x + i*cell_size.x, 0)
+                    ctx.lineTo(grid_pos.x + i*cell_size.x, cell_size.y*grid_cells.y)
                 }
     
                 // horizontal lines
-                for (let i = 0; i <= rows; i++) {
-                    ctx.moveTo(0,                grid_pos_y + i*cell_size.y)
-                    ctx.lineTo(cell_size.x*cols, grid_pos_y + i*cell_size.y)
+                for (let i = 0; i <= grid_cells.y; i++) {
+                    ctx.moveTo(0,                grid_pos.y + i*cell_size.y)
+                    ctx.lineTo(cell_size.x*grid_cells.x, grid_pos.y + i*cell_size.y)
                 }
     
                 ctx.stroke()
             }
 
-            // type Cell = {
-            //     char:  string
-            //     shape: Tldraw.TLShapeId
-            // }
-
-            let matrix: (undefined | null | string)[] = new Array(rows*cols)
+            let matrix: AsciiMatrix = new Array(grid_cells.y*grid_cells.x)
 
             // draw rows and cols count in bottom right corner
             ctx.font = '16px monospace'
             ctx.fillStyle = 'rgba(128, 128, 128, 0.6)'
-            let text = `${rows}×${cols}`
+            let text = `${grid_cells.y}×${grid_cells.x}`
             let metrics = ctx.measureText(text)
             ctx.fillText(text, window_size.x - metrics.width - 100, window_size.y - 100)
 
@@ -205,225 +388,61 @@ function CustomBackground(): React.ReactNode {
                 switch (shape.kind) {
                 case 'draw': {
 
-                    ctx.beginPath()
-                    ctx.globalAlpha = rendering_shape.opacity
-
-                    let geometry = editor.getShapeGeometry(shape.data)
-                    let mat = editor.getShapePageTransform(rendering_shape.id)
-
-                    if (geometry.vertices.length <= 1) {
-                        console.log('single vertex')
-                        break
-                    }
-
-                    // ctx.strokeStyle = theme[shape.data.props.color].solid
-                    // ctx.lineWidth = 4
-                    // ctx.stroke()
-                    // if (shape.data.props.fill !== 'none' && shape.data.props.isClosed) {
-                    //     ctx.fillStyle = theme[shape.data.props.color].semi
-                    //     ctx.fill()
-                    // }
-
-                    let v         = new Vec
-                    let cell      = new Vec
-                    let prev_v    = new Vec
-                    let prev_cell = new Vec
-
-                    for (let vi = 0; vi < geometry.vertices.length; vi++) {
-                        
-                        prev_v.setTo(v)
-                        prev_cell.setTo(cell)
-
-                        v.setTo(geometry.vertices[vi])
-                        transform(v, mat)
-                        transform(v, camera_mat)
-
-                        cell.x = Math.floor((v.x-grid_pos_x) / cell_size.x)
-                        cell.y = Math.floor((v.y-grid_pos_y) / cell_size.y)
-
-                        if (cell.equals(prev_cell)) {
-                            v.setTo(prev_v)
-                            cell.setTo(prev_cell)
-                            continue
-                        }
-                        
-                        {
-                            ctx.beginPath()
-                            ctx.arc(v.x, v.y, camera.z, 0, TAU)
-                            ctx.fillStyle = 'rgb(0, 0, 255)'
-                            ctx.fill()
-                        }
-
-                        if (vi === 0)
-                            continue
-
-                        // let char: string
-                        let char = '+'
-                        let dx = prev_v.x-v.x
-                        let dy = prev_v.y-v.y
-                        let adx = Math.abs(dx)
-                        let ady = Math.abs(dy)
-                        let sdx = Math.sign(dx)
-                        let sdy = Math.sign(dy)
-                        let ad = Math.abs(adx-ady)
-
-                        let cx = prev_cell.x
-                        let cy = prev_cell.y
-
-                        let dcx = 0
-                        let dcy = 0
-
-                        for (;;) {
-
-                            let prev_dcx = dcx
-                            let prev_dcy = dcy
-
-                            dcx = Math.sign(cell.x-cx)
-                            dcy = Math.sign(cell.y-cy)
-                            
-                            if (dcx === 0 && dcy === 0) {
-                                
-                                if (cx >= 0 && cx < cols &&
-                                    cy >= 0 && cy < rows
-                                ) {
-                                    matrix[cx + cy*cols] = char
-                                }
-
-                                break
-                            }
-
-                            /* Diagonal */
-                            if (ad < adx && ad < ady) {
-
-                                char = sdx === sdy ? '\\' : '/'
-
-                                if (cx >= 0 && cx < cols &&
-                                    cy >= 0 && cy < rows
-                                ) {
-                                    matrix[cx + cy*cols] = char
-                                }
-
-                                cy += dcy
-                                cx += dcx
-                            }
-                            /* Horizontal */
-                            else if (adx > ady) {
-
-                                if (dcy !== 0 && ccw_segments_intersecting_xy(
-                                    prev_v.x, prev_v.y,
-                                    v.x, v.y,
-                                    grid_pos_x + (cx+0) * cell_size.x, grid_pos_y + (cy + (dcy+1)/2) * cell_size.y,
-                                    grid_pos_x + (cx+1) * cell_size.x, grid_pos_y + (cy + (dcy+1)/2) * cell_size.y,
-                                )) {
-                                    char = dcx === dcy ? '\\' : '/'
-                                    
-                                    if (cx >= 0 && cx < cols &&
-                                        cy >= 0 && cy < rows
-                                    ) {
-                                        matrix[cx + cy*cols] = char
-                                    }
-
-                                    cy += dcy
-                                    cx += dcx
-                                }
-                                else {
-                                    if (prev_dcy !== 0) {
-                                        char = prev_dcx === prev_dcy ? '\\' : '/'
-                                    } else {
-                                        char = '―'
-                                    }
-                                    
-                                    if (cx >= 0 && cx < cols &&
-                                        cy >= 0 && cy < rows
-                                    ) {
-                                        matrix[cx + cy*cols] = char
-                                    }
-
-                                    cx += dcx
-                                }
-                            }
-                            /* Vertical */
-                            else {
-                                if (dcx !== 0 && ccw_segments_intersecting_xy(
-                                    prev_v.x, prev_v.y,
-                                    v.x, v.y,
-                                    grid_pos_x + (cx + (dcx+1)/2) * cell_size.x, grid_pos_y + (cy+0) * cell_size.y,
-                                    grid_pos_x + (cx + (dcx+1)/2) * cell_size.x, grid_pos_y + (cy+1) * cell_size.y,
-                                )) {
-                                    char = dcx === dcy ? '\\' : '/'
-                                    
-                                    if (cx >= 0 && cx < cols &&
-                                        cy >= 0 && cy < rows
-                                    ) {
-                                        matrix[cx + cy*cols] = char
-                                    }
-
-                                    cx += dcx
-                                    cy += dcy
-                                }
-                                else {
-                                    if (prev_dcx !== 0) {
-                                        char = prev_dcx === prev_dcy ? '\\' : '/'
-                                    } else {
-                                        char = '|'
-                                    }
-                                    
-                                    if (cx >= 0 && cx < cols &&
-                                        cy >= 0 && cy < rows
-                                    ) {
-                                        matrix[cx + cy*cols] = char
-                                    }
-
-                                    cy += dcy
-                                }
-                            }
-                        }
-                    }
+                    drawGeometryAscii(
+                        ctx,
+                        editor,
+                        shape.data,
+                        camera_mat,
+                        cell_size,
+                        grid_pos,
+                        grid_cells,
+                        matrix,
+                    )
 
                     break
                 }
                 case 'arrow': {
 
-                    ctx.beginPath()
-                    ctx.globalAlpha = rendering_shape.opacity
-
-                    let geometry = editor.getShapeGeometry(shape.data)
-                    let mat = editor.getShapePageTransform(rendering_shape.id)
-                    drawGeometry(geometry.vertices, camera_mat, mat, false)
-
-                    ctx.strokeStyle = theme[shape.data.props.color].solid
-                    ctx.lineWidth = 2
-                    ctx.stroke()
+                    drawGeometryAscii(
+                        ctx,
+                        editor,
+                        shape.data,
+                        camera_mat,
+                        cell_size,
+                        grid_pos,
+                        grid_cells,
+                        matrix,
+                    )
 
                     break
                 }
                 case 'geo': {
 
-                    ctx.beginPath()
-                    ctx.globalAlpha = rendering_shape.opacity
-
-                    let geometry = editor.getShapeGeometry(shape.data)
-                    let mat = editor.getShapePageTransform(rendering_shape.id)
-                    drawGeometry(geometry.vertices, camera_mat, mat, true)
-
-                    ctx.strokeStyle = theme[shape.data.props.color].solid
-                    ctx.lineWidth = 2
-                    ctx.stroke()
+                    drawGeometryAscii(
+                        ctx,
+                        editor,
+                        shape.data,
+                        camera_mat,
+                        cell_size,
+                        grid_pos,
+                        grid_cells,
+                        matrix,
+                    )
 
                     break
                 }
                 case 'line': {
 
-                    ctx.beginPath()
-                    ctx.globalAlpha = rendering_shape.opacity
-
-                    let geometry = editor.getShapeGeometry(shape.data)
-                    let mat = editor.getShapePageTransform(rendering_shape.id)
-                    drawGeometry(geometry.vertices, camera_mat, mat, false)
-
-                    ctx.strokeStyle = theme[shape.data.props.color].solid
-                    ctx.lineWidth = 2
-                    ctx.stroke()
+                    drawGeometryAscii(
+                        ctx,
+                        editor,
+                        shape.data,
+                        camera_mat,
+                        cell_size,
+                        grid_pos,
+                        grid_cells,
+                        matrix,
+                    )
 
                     break
                 }
@@ -445,14 +464,14 @@ function CustomBackground(): React.ReactNode {
             ctx.font = cell_size.y+'px monospace'
             ctx.fillStyle = 'black'
 
-            for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-                let char = matrix[x + y*cols]
+            for (let y = 0; y < grid_cells.y; y++) {
+            for (let x = 0; x < grid_cells.x; x++) {
+                let char = matrix[x + y*grid_cells.x]
                 if (char) {
                     ctx.fillText(
                         char,
-                        grid_pos_x + x * cell_size.x,
-                        grid_pos_y + (y+1) * cell_size.y)
+                        grid_pos.x + x * cell_size.x,
+                        grid_pos.y + (y+1) * cell_size.y)
                 }
             }
             }
