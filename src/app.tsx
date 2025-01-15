@@ -240,6 +240,12 @@ function CustomBackground(): React.ReactNode {
 
                         cell.x = Math.floor((v.x-grid_pos_x) / cell_size.x)
                         cell.y = Math.floor((v.y-grid_pos_y) / cell_size.y)
+
+                        if (cell.equals(prev_cell)) {
+                            v.setTo(prev_v)
+                            cell.setTo(prev_cell)
+                            continue
+                        }
                         
                         {
                             ctx.beginPath()
@@ -256,13 +262,19 @@ function CustomBackground(): React.ReactNode {
 
                         let char: string
                         {
-                            let dx = Math.sign(cell.x-cx)
-                            let dy = Math.sign(cell.y-cy)
-                            if      (dx === 0 && dy === 0) char = '+'
-                            else if (dy === 0)             char = '―' // ═ ╌ ╍
-                            else if (dx === 0)             char = '|' // ‖
-                            else if (dx != dy)             char = '/'
-                            else                           char = '\\'
+                            let dx = prev_v.x-v.x
+                            let dy = prev_v.y-v.y
+                            let ax = Math.abs(dx)
+                            let ay = Math.abs(dy)
+                            let ad = Math.abs(ax-ay)
+
+                            if (ad < ax && ad < ay) {
+                                char = Math.sign(dx) === Math.sign(dy) ? '\\' : '/'
+                            } else if (ax > ay) {
+                                char = '―'
+                            } else {
+                                char = '|'
+                            }
                         }
 
                         for (;;) {
