@@ -79,6 +79,6 @@ button:focus-visible {
 
 .tl-shapes {
     /* display: none; */
-    opacity: 0.2;
+    opacity: 0.15;
     pointer-events: none;
 }

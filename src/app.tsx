@@ -257,10 +257,8 @@ function CustomBackground(): React.ReactNode {
                         if (vi === 0)
                             continue
 
-                        let cx = prev_cell.x
-                        let cy = prev_cell.y
-
                         let char: string
+                        let is_diagonal = false
                         {
                             let dx = prev_v.x-v.x
                             let dy = prev_v.y-v.y
@@ -269,6 +267,7 @@ function CustomBackground(): React.ReactNode {
                             let ad = Math.abs(ax-ay)
 
                             if (ad < ax && ad < ay) {
+                                is_diagonal = true
                                 char = Math.sign(dx) === Math.sign(dy) ? '\\' : '/'
                             } else if (ax > ay) {
                                 char = '―'
@@ -276,6 +275,9 @@ function CustomBackground(): React.ReactNode {
                                 char = '|'
                             }
                         }
+
+                        let cx = prev_cell.x
+                        let cy = prev_cell.y
 
                         for (;;) {
 
@@ -291,7 +293,11 @@ function CustomBackground(): React.ReactNode {
                             if (dx === 0 && dy === 0)
                                 break
 
-                            if (dy !== 0 && ccw_segments_intersecting_xy(
+                            if (dy !== 0 && dy !== 0 && is_diagonal) {
+                                cy += dy
+                                cx += dx
+                            }
+                            else if (dy !== 0 && ccw_segments_intersecting_xy(
                                 prev_v.x, prev_v.y,
                                 v.x, v.y,
                                 grid_pos_x + (cx+1) * cell_size.x, grid_pos_y + (cy + (dy+1)/2) * cell_size.y,
