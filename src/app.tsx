@@ -259,7 +259,6 @@ function CustomBackground(): React.ReactNode {
 
                         // let char: string
                         let char = '+'
-                        let is_diagonal = false
                         let dx = prev_v.x-v.x
                         let dy = prev_v.y-v.y
                         let adx = Math.abs(dx)
@@ -267,10 +266,6 @@ function CustomBackground(): React.ReactNode {
                         let sdx = Math.sign(dx)
                         let sdy = Math.sign(dy)
                         let ad = Math.abs(adx-ady)
-
-                        if (ad < adx && ad < ady) {
-                            is_diagonal = true
-                        }
 
                         let cx = prev_cell.x
                         let cy = prev_cell.y
@@ -293,7 +288,8 @@ function CustomBackground(): React.ReactNode {
                                 break
                             }
 
-                            if (is_diagonal) {
+                            /* Diagonal */
+                            if (ad < adx && ad < ady) {
 
                                 char = sdx === sdy ? '\\' : '/'
 
@@ -305,19 +301,17 @@ function CustomBackground(): React.ReactNode {
 
                                 cy += dcy
                                 cx += dcx
-                            } else {
+                            }
+                            /* Horizontal */
+                            else if (adx > ady) {
 
                                 if (dcy !== 0 && ccw_segments_intersecting_xy(
                                     prev_v.x, prev_v.y,
                                     v.x, v.y,
-                                    grid_pos_x + (cx+1) * cell_size.x, grid_pos_y + (cy + (dcy+1)/2) * cell_size.y,
                                     grid_pos_x + (cx+0) * cell_size.x, grid_pos_y + (cy + (dcy+1)/2) * cell_size.y,
+                                    grid_pos_x + (cx+1) * cell_size.x, grid_pos_y + (cy + (dcy+1)/2) * cell_size.y,
                                 )) {
-                                    if (dcx === 0) {
-                                        char = '|'
-                                    } else {
-                                        char = dcx === dcy ? '\\' : '/'
-                                    }
+                                    char = dcx === dcy ? '\\' : '/'
                                     
                                     if (cx >= 0 && cx < cols &&
                                         cy >= 0 && cy < rows
@@ -326,13 +320,10 @@ function CustomBackground(): React.ReactNode {
                                     }
 
                                     cy += dcy
+                                    cx += dcx
                                 }
                                 else {
-                                    if (dcy === 0) {
-                                        char = '―'
-                                    } else {
-                                        char = dcy === dcx ? '\\' : '/'
-                                    }
+                                    char = '―'
                                     
                                     if (cx >= 0 && cx < cols &&
                                         cy >= 0 && cy < rows
@@ -341,6 +332,37 @@ function CustomBackground(): React.ReactNode {
                                     }
 
                                     cx += dcx
+                                }
+                            }
+                            /* Vertical */
+                            else {
+                                if (dcx !== 0 && ccw_segments_intersecting_xy(
+                                    prev_v.x, prev_v.y,
+                                    v.x, v.y,
+                                    grid_pos_x + (cx + (dcx+1)/2) * cell_size.x, grid_pos_y + (cy+0) * cell_size.y,
+                                    grid_pos_x + (cx + (dcx+1)/2) * cell_size.x, grid_pos_y + (cy+1) * cell_size.y,
+                                )) {
+                                    char = dcx === dcy ? '\\' : '/'
+                                    
+                                    if (cx >= 0 && cx < cols &&
+                                        cy >= 0 && cy < rows
+                                    ) {
+                                        matrix[cx + cy*cols] = char
+                                    }
+
+                                    cx += dcx
+                                    cy += dcy
+                                }
+                                else {
+                                    char = '|'
+                                    
+                                    if (cx >= 0 && cx < cols &&
+                                        cy >= 0 && cy < rows
+                                    ) {
+                                        matrix[cx + cy*cols] = char
+                                    }
+
+                                    cy += dcy
                                 }
                             }
                         }
