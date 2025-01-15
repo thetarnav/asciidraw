@@ -270,12 +270,16 @@ function CustomBackground(): React.ReactNode {
                         let cx = prev_cell.x
                         let cy = prev_cell.y
 
+                        let dcx = 0
+                        let dcy = 0
 
                         for (;;) {
 
-                            let dcx = Math.sign(cell.x-cx)
-                            let dcy = Math.sign(cell.y-cy)
+                            let prev_dcx = dcx
+                            let prev_dcy = dcy
 
+                            dcx = Math.sign(cell.x-cx)
+                            dcy = Math.sign(cell.y-cy)
                             
                             if (dcx === 0 && dcy === 0) {
                                 
@@ -323,7 +327,11 @@ function CustomBackground(): React.ReactNode {
                                     cx += dcx
                                 }
                                 else {
-                                    char = '―'
+                                    if (prev_dcy !== 0) {
+                                        char = dcx === dcy ? '\\' : '/'
+                                    } else {
+                                        char = '―'
+                                    }
                                     
                                     if (cx >= 0 && cx < cols &&
                                         cy >= 0 && cy < rows
@@ -354,7 +362,11 @@ function CustomBackground(): React.ReactNode {
                                     cy += dcy
                                 }
                                 else {
-                                    char = '|'
+                                    if (prev_dcx !== 0) {
+                                        char = dcx === dcy ? '\\' : '/'
+                                    } else {
+                                        char = '|'
+                                    }
                                     
                                     if (cx >= 0 && cx < cols &&
                                         cy >= 0 && cy < rows
