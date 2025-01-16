@@ -9,6 +9,13 @@ import {
 
 const TAU = 6.283185307179586
 
+const min   = Math.min
+const max   = Math.max
+const floor = Math.floor
+const ceil  = Math.ceil
+const abs   = Math.abs
+const sign  = Math.sign
+
 /**
  * Mutating version of `Tldraw.Mat.applyToPoint`
  */
@@ -30,6 +37,35 @@ function ccw_segments_intersecting_xy(
 ) {
     return ccw_xy(Ax, Ay, Cx, Cy, Dx, Dy) !== ccw_xy(Bx, By, Cx, Cy, Dx, Dy) && 
            ccw_xy(Ax, Ay, Bx, By, Cx, Cy) !== ccw_xy(Ax, Ay, Bx, By, Dx, Dy)
+}
+
+function within_segment(
+    p:  VecLike,
+    Ax: number, Ay: number,
+    Bx: number, By: number,
+) {
+    return min(Ax, Bx) <= p.x && p.x <= max(Ax, Bx) &&
+           min(Ay, By) <= p.y && p.y <= max(Ay, By)
+}
+
+function segments_intersection(
+    Ax: number, Ay: number,
+    Bx: number, By: number,
+    Cx: number, Cy: number,
+    Dx: number, Dy: number,
+    out: VecLike,
+): boolean {
+    
+    let mAB = (By-Ay) / (Bx-Ax)
+    let mCD = (Dy-Cy) / (Dx-Cx)
+
+    if (mAB === mCD) return false
+
+    out.x = (mAB*Ax - mCD*Cx + Cy - Ay) / (mAB-mCD)
+    out.y = mAB * (out.x-Ax) + Ay
+
+    return within_segment(out, Ax, Ay, Bx, By) &&
+           within_segment(out, Cx, Cy, Dx, Dy)
 }
 
 type Union<T> = {[K in keyof T]: UnionMember<T, K>}[keyof T]
@@ -97,8 +133,8 @@ function drawGeometryAscii(
         transform(v, mat)
         transform(v, camera_mat)
 
-        cell.x = Math.floor((v.x-grid_pos.x) / cell_size.x)
-        cell.y = Math.floor((v.y-grid_pos.y) / cell_size.y)
+        cell.x = floor((v.x-grid_pos.x) / cell_size.x)
+        cell.y = floor((v.y-grid_pos.y) / cell_size.y)
 
         if (cell.equals(prev_cell)) {
             v.setTo(prev_v)
@@ -119,11 +155,225 @@ function drawGeometryAscii(
         let char = '+'
         let dx = prev_v.x-v.x
         let dy = prev_v.y-v.y
-        let adx = Math.abs(dx)
-        let ady = Math.abs(dy)
-        let sdx = Math.sign(dx)
-        let sdy = Math.sign(dy)
-        let ad = Math.abs(adx-ady)
+        let adx = abs(dx)
+        let ady = abs(dy)
+        let sdx = sign(dx)
+        let sdy = sign(dy)
+        let ad  = abs(adx-ady)
+
+        let cx = prev_cell.x
+        let cy = prev_cell.y
+
+        let dcx = 0
+        let dcy = 0
+
+        let _i = 0
+        for (;;) {
+
+            if (_i++ > 1000) {
+                debugger
+            }
+
+            let prev_dcx = dcx
+            let prev_dcy = dcy
+
+            dcx = sign(cell.x-cx)
+            dcy = sign(cell.y-cy)
+
+            let next_cx = cx
+            let next_cy = cy
+
+            /* End */
+            if (dcx === 0 && dcy === 0) {
+
+                if (cx >= 0 && cx < grid_cells.x &&
+                    cy >= 0 && cy < grid_cells.y
+                ) {
+                    matrix[cx + cy*grid_cells.x] = char
+                }
+
+                break
+            }
+
+            let mx = cell_size.x * 0.2
+            let my = cell_size.y * 0.2
+
+            let cell_x = grid_pos.x + cx * cell_size.x
+            let cell_y = grid_pos.y + cy * cell_size.y
+
+            /* Diagonal */
+            if (ad < adx && ad < ady) {
+
+                char = sdx === sdy ? '\\' : '/'
+
+                /* Directly Vertical */
+                if (dcx === 0 || (
+                    dcy !== 0 && ccw_segments_intersecting_xy(
+                        prev_v.x, prev_v.y,
+                        v.x, v.y,
+                        cell_x + mx,               cell_y + max(0, dcy) * cell_size.y,
+                        cell_x + cell_size.x - mx, cell_y + max(0, dcy) * cell_size.y,
+                    ))
+                ) {
+                    next_cy += dcy
+                }
+                /* Directly Horizontal */
+                else if (dcx === 0 ||
+                    (dcx !== 0 && ccw_segments_intersecting_xy(
+                        prev_v.x, prev_v.y,
+                        v.x, v.y,
+                        cell_x + max(0, dcx) * cell_size.x, cell_y + my,
+                        cell_x + max(0, dcx) * cell_size.x, cell_y + cell_size.y - my,
+                    ))
+                ) {
+                    next_cx += dcx
+                } else {
+                    next_cx += dcx
+                    next_cy += dcy
+                }
+            }
+            /* Horizontal */
+            else if (adx > ady) {
+
+                if (dcx === 0 ||
+                    (dcy !== 0 && ccw_segments_intersecting_xy(
+                        prev_v.x, prev_v.y,
+                        v.x, v.y,
+                        cell_x,               cell_y + max(0, dcy) * cell_size.y,
+                        cell_x + cell_size.x, cell_y + max(0, dcy) * cell_size.y,
+                    ))
+                ) {
+                    char = dcx === dcy ? '\\' : '/'
+                    next_cx += dcx
+                    next_cy += dcy
+                }
+                else {
+                    if (prev_dcy !== 0) {
+                        char = prev_dcx === prev_dcy ? '\\' : '/'
+                    } else {
+                        char = '―'
+                    }
+                    next_cx += dcx
+                }
+            }
+            /* Vertical */
+            else {
+                if (dcy === 0 ||
+                    (dcx !== 0 && ccw_segments_intersecting_xy(
+                        prev_v.x, prev_v.y,
+                        v.x, v.y,
+                        cell_x + max(0, dcx) * cell_size.x, cell_y,
+                        cell_x + max(0, dcx) * cell_size.x, cell_y + cell_size.y,
+                    ))
+                ) {
+                    char = dcx === dcy ? '\\' : '/'
+                    next_cx += dcx
+                    next_cy += dcy
+                }
+                else {
+                    if (prev_dcx !== 0) {
+                        char = prev_dcx === prev_dcy ? '\\' : '/'
+                    } else {
+                        char = '|'
+                    }
+                    next_cy += dcy
+                }
+            }
+
+            if (cx >= 0 && cx < grid_cells.x &&
+                cy >= 0 && cy < grid_cells.y
+            ) {
+                matrix[cx + cy*grid_cells.x] = char
+            }
+
+            cx = next_cx
+            cy = next_cy
+        }
+    }
+}
+
+function get_char_from_vec(dx: number, dy: number): string {
+    
+    let ax = abs(dx)
+    let ay = abs(dy)
+    let ad = abs(ax-ay)
+
+    if (ad < ax && ad < ay) {
+        return sign(dx) === sign(dy) ? '\\' : '/'
+    }
+    if (ax > ay) {
+        return '―'
+    }
+    return '|'
+}
+
+function drawGeometryAscii2(
+    ctx:         CanvasRenderingContext2D,
+    editor:      Tldraw.Editor,
+    shape:       Tldraw.TLShape | Tldraw.TLShapeId,
+    camera_mat:  MatLike,
+    cell_size:   VecLike,
+    grid_pos:    VecLike,
+    grid_cells:  VecLike,
+    matrix:      AsciiMatrix,
+) {
+    
+    let geometry = editor.getShapeGeometry(shape)
+    let mat = editor.getShapePageTransform(shape)
+
+    if (geometry.vertices.length <= 1) {
+        console.log('single vertex')
+        return
+    }
+
+    let v              = new Vec
+    let cell           = new Vec
+    let prev_v         = new Vec
+    let prev_cell      = new Vec
+    let last_same_cell = new Vec
+    let is_same_cell = false
+
+    let intersection = new Vec
+
+    for (let vi = 0; vi < geometry.vertices.length; vi++) {
+        
+        prev_v.setTo(v)
+        prev_cell.setTo(cell)
+
+        v.setTo(geometry.vertices[vi])
+        transform(v, mat)
+        transform(v, camera_mat)
+
+        cell.x = floor((v.x-grid_pos.x) / cell_size.x)
+        cell.y = floor((v.y-grid_pos.y) / cell_size.y)
+
+        if (cell.equals(prev_cell)) {
+            last_same_cell.setTo(v)
+            v.setTo(prev_v)
+            cell.setTo(prev_cell)
+            is_same_cell = true
+            continue
+        }
+
+        is_same_cell = false
+        
+        {
+            ctx.beginPath()
+            ctx.arc(v.x, v.y, camera_mat.a, 0, TAU)
+            ctx.fillStyle = 'rgb(0, 0, 255)'
+            ctx.fill()
+        }
+
+        if (vi === 0)
+            continue
+
+        let dx = prev_v.x-v.x
+        let dy = prev_v.y-v.y
+        let adx = abs(dx)
+        let ady = abs(dy)
+        let sdx = sign(dx)
+        let sdy = sign(dy)
+        let ad  = abs(adx-ady)
 
         let cx = prev_cell.x
         let cy = prev_cell.y
@@ -136,103 +386,52 @@ function drawGeometryAscii(
             let prev_dcx = dcx
             let prev_dcy = dcy
 
-            dcx = Math.sign(cell.x-cx)
-            dcy = Math.sign(cell.y-cy)
-            
-            if (dcx === 0 && dcy === 0) {
+            dcx = sign(cell.x-cx)
+            dcy = sign(cell.y-cy)
+
+            /* Vertical */
+            if (dcy !== 0 && segments_intersection(
+                prev_v.x, prev_v.y,
+                v.x, v.y,
+                grid_pos.x + (cx+0) * cell_size.x, grid_pos.y + (cy + max(0, dcy)) * cell_size.y,
+                grid_pos.x + (cx+1) * cell_size.x, grid_pos.y + (cy + max(0, dcy)) * cell_size.y,
+                intersection,
+            )) {
                 
                 if (cx >= 0 && cx < grid_cells.x &&
                     cy >= 0 && cy < grid_cells.y
                 ) {
-                    matrix[cx + cy*grid_cells.x] = char
+                    matrix[cx + cy*grid_cells.x] = get_char_from_vec(intersection.x-prev_v.x, intersection.y-prev_v.y)
                 }
 
-                break
+                cy += dcy
             }
-
-            /* Diagonal */
-            if (ad < adx && ad < ady) {
-
-                char = sdx === sdy ? '\\' : '/'
+            /* Horizontal */
+            else if (dcx !== 0 && segments_intersection(
+                prev_v.x, prev_v.y,
+                v.x, v.y,
+                grid_pos.x + (cx + max(0, dcx)) * cell_size.x, grid_pos.y + (cy+0) * cell_size.y,
+                grid_pos.x + (cx + max(0, dcx)) * cell_size.x, grid_pos.y + (cy+1) * cell_size.y,
+                intersection,
+            )) {
 
                 if (cx >= 0 && cx < grid_cells.x &&
                     cy >= 0 && cy < grid_cells.y
                 ) {
-                    matrix[cx + cy*grid_cells.x] = char
+                    matrix[cx + cy*grid_cells.x] = get_char_from_vec(intersection.x-prev_v.x, intersection.y-prev_v.y)
                 }
 
-                cy += dcy
                 cx += dcx
+
             }
-            /* Horizontal */
-            else if (adx > ady) {
-
-                if (dcy !== 0 && ccw_segments_intersecting_xy(
-                    prev_v.x, prev_v.y,
-                    v.x, v.y,
-                    grid_pos.x + (cx+0) * cell_size.x, grid_pos.y + (cy + (dcy+1)/2) * cell_size.y,
-                    grid_pos.x + (cx+1) * cell_size.x, grid_pos.y + (cy + (dcy+1)/2) * cell_size.y,
-                )) {
-                    char = dcx === dcy ? '\\' : '/'
-                    
-                    if (cx >= 0 && cx < grid_cells.x &&
-                        cy >= 0 && cy < grid_cells.y
-                    ) {
-                        matrix[cx + cy*grid_cells.x] = char
-                    }
-
-                    cy += dcy
-                    cx += dcx
-                }
-                else {
-                    if (prev_dcy !== 0) {
-                        char = prev_dcx === prev_dcy ? '\\' : '/'
-                    } else {
-                        char = '―'
-                    }
-                    
-                    if (cx >= 0 && cx < grid_cells.x &&
-                        cy >= 0 && cy < grid_cells.y
-                    ) {
-                        matrix[cx + cy*grid_cells.x] = char
-                    }
-
-                    cx += dcx
-                }
-            }
-            /* Vertical */
+            /* Same cell */
             else {
-                if (dcx !== 0 && ccw_segments_intersecting_xy(
-                    prev_v.x, prev_v.y,
-                    v.x, v.y,
-                    grid_pos.x + (cx + (dcx+1)/2) * cell_size.x, grid_pos.y + (cy+0) * cell_size.y,
-                    grid_pos.x + (cx + (dcx+1)/2) * cell_size.x, grid_pos.y + (cy+1) * cell_size.y,
-                )) {
-                    char = dcx === dcy ? '\\' : '/'
-                    
-                    if (cx >= 0 && cx < grid_cells.x &&
-                        cy >= 0 && cy < grid_cells.y
-                    ) {
-                        matrix[cx + cy*grid_cells.x] = char
-                    }
-
-                    cx += dcx
-                    cy += dcy
-                }
-                else {
-                    if (prev_dcx !== 0) {
-                        char = prev_dcx === prev_dcy ? '\\' : '/'
-                    } else {
-                        char = '|'
-                    }
-                    
-                    if (cx >= 0 && cx < grid_cells.x &&
-                        cy >= 0 && cy < grid_cells.y
-                    ) {
-                        matrix[cx + cy*grid_cells.x] = char
-                    }
-
-                    cy += dcy
+                console.assert(dcx === 0 && dcy === 0)
+                
+                if (cx >= 0 && cx < grid_cells.x &&
+                    cy >= 0 && cy < grid_cells.y
+                ) {
+                    matrix[cx + cy*grid_cells.x] = get_char_from_vec(v.x-prev_v.x, v.y-prev_v.y)
                 }
             }
         }
@@ -329,8 +528,8 @@ function CustomBackground(): React.ReactNode {
 
             // cols x rows
             let grid_cells = new Vec(
-                Math.ceil(page_rect.w/font_size.x) + 1,
-                Math.ceil(page_rect.h/font_size.y) + 1,
+                ceil(page_rect.w/font_size.x) + 1,
+                ceil(page_rect.h/font_size.y) + 1,
             )
 
             let grid_pos = new Vec(
@@ -341,7 +540,7 @@ function CustomBackground(): React.ReactNode {
             /*
              render grid lines
             */
-            let line_width = Math.min(2, camera.z/1.8 - 0.3)
+            let line_width = min(2, camera.z/1.8 - 0.3)
             if (line_width > 0.1) {
 
                 ctx.beginPath()
