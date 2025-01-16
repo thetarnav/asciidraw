@@ -292,14 +292,14 @@ function drawGeometryAscii(
     }
 }
 
-function get_char_from_vec(dx: number, dy: number): string {
+function get_char_from_vec(d: VecLike): string {
     
-    let ax = abs(dx)
-    let ay = abs(dy)
+    let ax = abs(d.x)
+    let ay = abs(d.y)
     let ad = abs(ax-ay)
 
     if (ad < ax && ad < ay) {
-        return sign(dx) === sign(dy) ? '\\' : '/'
+        return sign(d.x) === sign(d.y) ? '\\' : '/'
     }
     if (ax > ay) {
         return '―'
@@ -330,10 +330,14 @@ function drawGeometryAscii2(
     let cell           = new Vec
     let prev_v         = new Vec
     let prev_cell      = new Vec
-    let last_same_cell = new Vec
-    let is_same_cell = false
 
-    let intersection = new Vec
+    type PathItem = {
+        c:   Vec,
+        d:   Vec,
+        key: boolean,
+    }
+
+    let path: PathItem[] = []
 
     for (let vi = 0; vi < geometry.vertices.length; vi++) {
         
@@ -348,14 +352,10 @@ function drawGeometryAscii2(
         cell.y = floor((v.y-grid_pos.y) / cell_size.y)
 
         if (cell.equals(prev_cell)) {
-            last_same_cell.setTo(v)
             v.setTo(prev_v)
             cell.setTo(prev_cell)
-            is_same_cell = true
             continue
         }
-
-        is_same_cell = false
         
         {
             ctx.beginPath()
@@ -367,13 +367,7 @@ function drawGeometryAscii2(
         if (vi === 0)
             continue
 
-        let dx = prev_v.x-v.x
-        let dy = prev_v.y-v.y
-        let adx = abs(dx)
-        let ady = abs(dy)
-        let sdx = sign(dx)
-        let sdy = sign(dy)
-        let ad  = abs(adx-ady)
+        let d = new Vec(prev_v.x-v.x, prev_v.y-v.y)
 
         let cx = prev_cell.x
         let cy = prev_cell.y
@@ -381,59 +375,91 @@ function drawGeometryAscii2(
         let dcx = 0
         let dcy = 0
 
+        let _i = 0
         for (;;) {
 
-            let prev_dcx = dcx
-            let prev_dcy = dcy
+            if (_i++ > 1000) {
+                debugger
+            }
 
             dcx = sign(cell.x-cx)
             dcy = sign(cell.y-cy)
 
-            /* Vertical */
-            if (dcy !== 0 && segments_intersection(
-                prev_v.x, prev_v.y,
-                v.x, v.y,
-                grid_pos.x + (cx+0) * cell_size.x, grid_pos.y + (cy + max(0, dcy)) * cell_size.y,
-                grid_pos.x + (cx+1) * cell_size.x, grid_pos.y + (cy + max(0, dcy)) * cell_size.y,
-                intersection,
-            )) {
-                
-                if (cx >= 0 && cx < grid_cells.x &&
-                    cy >= 0 && cy < grid_cells.y
-                ) {
-                    matrix[cx + cy*grid_cells.x] = get_char_from_vec(intersection.x-prev_v.x, intersection.y-prev_v.y)
-                }
+            if (path.length === 0 || !path[path.length-1].c.equalsXY(cx, cy)) {
+                path.push({c: new Vec(cx, cy), d, key: dcx === 0 && dcy === 0})
+            }
 
-                cy += dcy
+            let cell_x = grid_pos.x + cx * cell_size.x
+            let cell_y = grid_pos.y + cy * cell_size.y
+
+            /* End */
+            if (dcx === 0 && dcy === 0) {
+                break
             }
             /* Horizontal */
-            else if (dcx !== 0 && segments_intersection(
+            else if (dcy === 0 || (dcx !== 0 && ccw_segments_intersecting_xy(
                 prev_v.x, prev_v.y,
                 v.x, v.y,
-                grid_pos.x + (cx + max(0, dcx)) * cell_size.x, grid_pos.y + (cy+0) * cell_size.y,
-                grid_pos.x + (cx + max(0, dcx)) * cell_size.x, grid_pos.y + (cy+1) * cell_size.y,
-                intersection,
-            )) {
-
-                if (cx >= 0 && cx < grid_cells.x &&
-                    cy >= 0 && cy < grid_cells.y
-                ) {
-                    matrix[cx + cy*grid_cells.x] = get_char_from_vec(intersection.x-prev_v.x, intersection.y-prev_v.y)
-                }
-
+                cell_x + max(0, dcx) * cell_size.x, cell_y,
+                cell_x + max(0, dcx) * cell_size.x, cell_y + cell_size.y,
+            ))) {
                 cx += dcx
-
             }
-            /* Same cell */
+            /* Vertical */
             else {
-                console.assert(dcx === 0 && dcy === 0)
-                
-                if (cx >= 0 && cx < grid_cells.x &&
-                    cy >= 0 && cy < grid_cells.y
-                ) {
-                    matrix[cx + cy*grid_cells.x] = get_char_from_vec(v.x-prev_v.x, v.y-prev_v.y)
+                cy += dcy
+            }
+        }
+    }
+
+    for (let i = 0; i < path.length; i++) {
+        let item = path[i]
+
+        let char = get_char_from_vec(item.d)
+
+        if (i > 0 && i < path.length-1) {
+            let prev = path[i-1]
+            let next = path[i+1]
+
+            let prev_dcx = item.c.x-prev.c.x
+            let prev_dcy = item.c.y-prev.c.y
+            let next_dcx = item.c.x-next.c.x
+            let next_dcy = item.c.y-next.c.y
+
+            /* 
+             Eliminate/smooth corners
+
+             |           |  
+             |――    ->    ――
+
+            */
+            if (abs(prev_dcx)+abs(next_dcx) === 1 &&
+                abs(prev_dcy)+abs(next_dcy) === 1
+            ) {
+                if (item.key) {
+                    char = prev_dcx === next_dcy && prev_dcy === next_dcx ? '/' : '\\'
+                } else {
+                    path.splice(i, 1)
+                    i--
+                    continue
                 }
             }
+            /*
+             Smooth diagonal-straight connection
+
+              ――          ―- 
+                ――   ->     \―
+
+            */
+            else if (abs(prev_dcx)+abs(prev_dcy)+abs(next_dcx)+abs(next_dcy) === 3) {
+                char = sign(item.d.x) === sign(item.d.y) ? '\\' : '/'
+            }
+        }
+
+        if (item.c.x >= 0 && item.c.x < grid_cells.x &&
+            item.c.y >= 0 && item.c.y < grid_cells.y
+        ) {
+            matrix[item.c.x + item.c.y*grid_cells.x] = char
         }
     }
 }
@@ -587,7 +613,7 @@ function CustomBackground(): React.ReactNode {
                 switch (shape.kind) {
                 case 'draw': {
 
-                    drawGeometryAscii(
+                    drawGeometryAscii2(
                         ctx,
                         editor,
                         shape.data,
@@ -602,7 +628,7 @@ function CustomBackground(): React.ReactNode {
                 }
                 case 'arrow': {
 
-                    drawGeometryAscii(
+                    drawGeometryAscii2(
                         ctx,
                         editor,
                         shape.data,
@@ -617,7 +643,7 @@ function CustomBackground(): React.ReactNode {
                 }
                 case 'geo': {
 
-                    drawGeometryAscii(
+                    drawGeometryAscii2(
                         ctx,
                         editor,
                         shape.data,
@@ -632,7 +658,7 @@ function CustomBackground(): React.ReactNode {
                 }
                 case 'line': {
 
-                    drawGeometryAscii(
+                    drawGeometryAscii2(
                         ctx,
                         editor,
                         shape.data,
