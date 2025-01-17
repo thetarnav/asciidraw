@@ -317,6 +317,8 @@ function drawGeometryAscii2(
     grid_cells:  VecLike,
     matrix:      AsciiMatrix,
 ) {
+
+    let cell_hypot = Math.hypot(cell_size.x/2, cell_size.y/2)
     
     let geometry = editor.getShapeGeometry(shape)
     let mat = editor.getShapePageTransform(shape)
@@ -351,10 +353,33 @@ function drawGeometryAscii2(
         cell.x = floor((v.x-grid_pos.x) / cell_size.x)
         cell.y = floor((v.y-grid_pos.y) / cell_size.y)
 
+        if (vi === 0)
+            continue
+
         if (cell.equals(prev_cell)) {
             v.setTo(prev_v)
             cell.setTo(prev_cell)
             continue
+        }
+
+        let d = new Vec(prev_v.x-v.x, prev_v.y-v.y)
+
+        let ax = abs(d.x)
+        let ay = abs(d.y)
+        let ad = abs(ax-ay)
+    
+        let is_diagonal = ad < ax && ad < ay
+
+        /* Eliminate points in diagonal strokes that barely touch a cell */
+        if (is_diagonal && vi < geometry.vertices.length-1) {
+            let cell_x = grid_pos.x + cell.x * cell_size.x + cell_size.x/2
+            let cell_y = grid_pos.y + cell.y * cell_size.y + cell_size.y/2
+            let dist_to_cell = Vec.Dist(v, {x: cell_x, y: cell_y})
+            if (dist_to_cell > cell_hypot*0.8) {
+                v.setTo(prev_v)
+                cell.setTo(prev_cell)
+                continue
+            }
         }
         
         {
@@ -363,11 +388,6 @@ function drawGeometryAscii2(
             ctx.fillStyle = 'rgb(0, 0, 255)'
             ctx.fill()
         }
-
-        if (vi === 0)
-            continue
-
-        let d = new Vec(prev_v.x-v.x, prev_v.y-v.y)
 
         let cx = prev_cell.x
         let cy = prev_cell.y
@@ -378,7 +398,7 @@ function drawGeometryAscii2(
         let _i = 0
         for (;;) {
 
-            if (_i++ > 1000) {
+            DEV: if (_i++ > 1000) {
                 debugger
             }
 
