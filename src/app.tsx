@@ -415,7 +415,38 @@ function drawGeometryAscii2(
     for (let i = 0; i < path.length; i++) {
         let item = path[i]
 
-        let char = get_char_from_vec(item.d)
+        // let char = get_char_from_vec(item.d)
+
+        let char: string
+        {
+            let sx = item.c.x
+            let sy = item.c.y
+            let ex = item.c.x
+            let ey = item.c.y
+            if (i+1 < path.length) {
+                ex = path[i+1].c.x
+                ey = path[i+1].c.y
+            }
+            if (i > 0) {
+                sx = path[i-1].c.x
+                sy = path[i-1].c.y
+            }
+
+            let dx = ex-sx
+            let dy = ey-sy
+            let ax = abs(dx)
+            let ay = abs(dy)
+            let ad = abs(ax-ay)
+        
+            if (ad < ax && ad < ay) {
+                char =  sign(dx) === sign(dy) ? '\\' : '/'
+            } else if (ax > ay) {
+                char =  '─'
+            } else {
+                char =  '│'
+            }
+        }
+        
 
         if (i > 0 && i < path.length-1) {
             let prev = path[i-1]
