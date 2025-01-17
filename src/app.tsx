@@ -440,7 +440,7 @@ function drawGeometryAscii2(
                     char = prev_dcx === next_dcy && prev_dcy === next_dcx ? '/' : '\\'
                 } else {
                     path.splice(i, 1)
-                    i--
+                    i-=2 // redo prev
                     continue
                 }
             }
