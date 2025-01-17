@@ -432,6 +432,9 @@ function drawGeometryAscii2(
         }
     }
 
+    if (path.length <= 1)
+        return
+
     for (let i = 0; i < path.length; i++) {
         let item = path[i]
 
@@ -489,7 +492,6 @@ function drawGeometryAscii2(
                 abs(prev_dcy)+abs(next_dcy) === 1
             ) {
                 if (item.key) {
-                    // ╭  ╮ ╯ ╰
                     char = prev_dcx === next_dcy && prev_dcy === next_dcx
                         ? (prev_dcx > 0 || prev_dcy > 0 ? '╯' : '╭')
                         : (prev_dcx > 0 || next_dcx > 0 ? '╮' : '╰')
@@ -515,6 +517,33 @@ function drawGeometryAscii2(
             item.c.y >= 0 && item.c.y < grid_cells.y
         ) {
             matrix[item.c.x + item.c.y*grid_cells.x] = char
+        }
+    }
+
+    /* Close some paths */
+    if (path.length >= 3) {
+
+        let prev = path[0]
+        let last = path[path.length-1]
+        let next = path[path.length-2]
+
+        let prev_dcx = last.c.x-prev.c.x
+        let prev_dcy = last.c.y-prev.c.y
+        let next_dcx = last.c.x-next.c.x
+        let next_dcy = last.c.y-next.c.y
+
+        if (abs(prev_dcx)+abs(next_dcx) === 1 &&
+            abs(prev_dcy)+abs(next_dcy) === 1
+        ) {
+            let char = prev_dcx === next_dcy && prev_dcy === next_dcx
+                ? (prev_dcx > 0 || prev_dcy > 0 ? '╯' : '╭')
+                : (prev_dcx > 0 || next_dcx > 0 ? '╮' : '╰')
+
+            if (last.c.x >= 0 && last.c.x < grid_cells.x &&
+                last.c.y >= 0 && last.c.y < grid_cells.y
+            ) {
+                matrix[last.c.x + last.c.y*grid_cells.x] = char
+            }
         }
     }
 }
