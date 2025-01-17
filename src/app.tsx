@@ -94,6 +94,17 @@ function getShape(shape: Tldraw.TLShape): Shape {
 
 type AsciiMatrix = (null | undefined | string)[]
 
+const CHAR_V        = '│'
+const CHAR_H        = '─'
+const CHAR_VH_CROSS = '┼'
+const CHAR_D_TL_BR  = '╲'
+const CHAR_D_TR_BL  = '╱'
+const CHAR_D_CROSS  = '╳'
+const CHAR_A_B_R    = '╭'
+const CHAR_A_B_L    = '╮'
+const CHAR_A_T_L    = '╯'
+const CHAR_A_T_R    = '╰'
+
 function drawGeometryAscii(
     ctx:        CanvasRenderingContext2D,
     editor:     Tldraw.Editor,
@@ -462,11 +473,11 @@ function drawGeometryAscii2(
             let ad = abs(ax-ay)
         
             if (ad < ax && ad < ay) {
-                char =  sign(dx) === sign(dy) ? '\\' : '/'
+                char =  sign(dx) === sign(dy) ? CHAR_D_TL_BR : CHAR_D_TR_BL
             } else if (ax > ay) {
-                char =  '─'
+                char =  CHAR_H
             } else {
-                char =  '│'
+                char =  CHAR_V
             }
         }
         
@@ -493,8 +504,8 @@ function drawGeometryAscii2(
             ) {
                 if (item.key) {
                     char = prev_dcx === next_dcy && prev_dcy === next_dcx
-                        ? (prev_dcx > 0 || prev_dcy > 0 ? '╯' : '╭')
-                        : (prev_dcx > 0 || next_dcx > 0 ? '╮' : '╰')
+                        ? (prev_dcx > 0 || prev_dcy > 0 ? CHAR_A_T_L : CHAR_A_B_R)
+                        : (prev_dcx > 0 || next_dcx > 0 ? CHAR_A_B_L : CHAR_A_T_R)
                 } else {
                     path.splice(i, 1)
                     i-=2 // redo prev
@@ -509,13 +520,21 @@ function drawGeometryAscii2(
 
             */
             else if (abs(prev_dcx)+abs(prev_dcy)+abs(next_dcx)+abs(next_dcy) === 3) {
-                char = sign(item.d.x) === sign(item.d.y) ? '\\' : '/'
+                char = sign(item.d.x) === sign(item.d.y) ? CHAR_D_TL_BR : CHAR_D_TR_BL
             }
         }
 
         if (item.c.x >= 0 && item.c.x < grid_cells.x &&
             item.c.y >= 0 && item.c.y < grid_cells.y
         ) {
+            let old_char = matrix[item.c.x + item.c.y*grid_cells.x]
+            if (old_char) {
+                if ((old_char === CHAR_V && char === CHAR_H) ||
+                    (old_char === CHAR_H && char === CHAR_V)
+                ) {
+                    char = CHAR_VH_CROSS
+                }
+            }
             matrix[item.c.x + item.c.y*grid_cells.x] = char
         }
     }
@@ -536,8 +555,8 @@ function drawGeometryAscii2(
             abs(prev_dcy)+abs(next_dcy) === 1
         ) {
             let char = prev_dcx === next_dcy && prev_dcy === next_dcx
-                ? (prev_dcx > 0 || prev_dcy > 0 ? '╯' : '╭')
-                : (prev_dcx > 0 || next_dcx > 0 ? '╮' : '╰')
+                ? (prev_dcx > 0 || prev_dcy > 0 ? CHAR_A_T_L : CHAR_A_B_R)
+                : (prev_dcx > 0 || next_dcx > 0 ? CHAR_A_B_L : CHAR_A_T_R)
 
             if (last.c.x >= 0 && last.c.x < grid_cells.x &&
                 last.c.y >= 0 && last.c.y < grid_cells.y
