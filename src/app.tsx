@@ -302,9 +302,9 @@ function get_char_from_vec(d: VecLike): string {
         return sign(d.x) === sign(d.y) ? '\\' : '/'
     }
     if (ax > ay) {
-        return '―'
+        return '─'
     }
-    return '|'
+    return '│'
 }
 
 function drawGeometryAscii2(
@@ -425,6 +425,7 @@ function drawGeometryAscii2(
             let prev_dcy = item.c.y-prev.c.y
             let next_dcx = item.c.x-next.c.x
             let next_dcy = item.c.y-next.c.y
+            
 
             /* 
              Eliminate/smooth corners
@@ -437,7 +438,10 @@ function drawGeometryAscii2(
                 abs(prev_dcy)+abs(next_dcy) === 1
             ) {
                 if (item.key) {
-                    char = prev_dcx === next_dcy && prev_dcy === next_dcx ? '/' : '\\'
+                    // ╭  ╮ ╯ ╰
+                    char = prev_dcx === next_dcy && prev_dcy === next_dcx
+                        ? (prev_dcx > 0 || prev_dcy > 0 ? '╯' : '╭')
+                        : (prev_dcx > 0 || next_dcx > 0 ? '╮' : '╰')
                 } else {
                     path.splice(i, 1)
                     i-=2 // redo prev
