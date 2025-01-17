@@ -24,6 +24,6 @@
 		"forceConsistentCasingInFileNames": true,
 		"noUncheckedSideEffectImports": true,
 	},
-	"include": ["vite.condig.ts"]
+	"include": ["vite.config.ts"]
 }
 
