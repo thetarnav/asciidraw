@@ -676,17 +676,17 @@ function points_to_char(points: number): string | null {
     case 1<<19: return '╱'  // bottom right diagonal
     default: {
         // Multiple points - return cross or intersection
-        let hasHorizontal = points & ((1<<10) | (1<<11))
-        let hasVertical = points & ((1<<8) | (1<<9))
-        let hasDiagonalLeft = points & ((1<<12) | (1<<14) | (1<<16) | (1<<18))
-        let hasDiagonalRight = points & ((1<<13) | (1<<15) | (1<<17) | (1<<19))
+        let has_horizontal     = points & (1<<10 | 1<<11)
+        let has_vertical       = points & (1<<8 | 1<<9)
+        let has_diagonal_left  = points & (1<<12 | 1<<14 | 1<<16 | 1<<18)
+        let has_diagonal_right = points & (1<<13 | 1<<15 | 1<<17 | 1<<19)
 
-        if (hasHorizontal && hasVertical) return '┼'
-        if (hasDiagonalLeft && hasDiagonalRight) return '╳'
-        if (hasHorizontal) return '─'
-        if (hasVertical) return '│'
-        if (hasDiagonalLeft) return '╲'
-        if (hasDiagonalRight) return '╱'
+        if (has_horizontal && has_vertical) return '┼'
+        if (has_diagonal_left && has_diagonal_right) return '╳'
+        if (has_horizontal) return '─'
+        if (has_vertical) return '│'
+        if (has_diagonal_left) return '╲'
+        if (has_diagonal_right) return '╱'
         return null
     }
     }
