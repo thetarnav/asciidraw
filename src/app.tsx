@@ -16,6 +16,7 @@ const ceil  = Math.ceil
 const abs   = Math.abs
 const sign  = Math.sign
 
+
 /**
  * Mutating version of `Tldraw.Mat.applyToPoint`
  */
@@ -35,7 +36,7 @@ function ccw_segments_intersecting_xy(
     Cx: number, Cy: number,
     Dx: number, Dy: number,
 ) {
-    return ccw_xy(Ax, Ay, Cx, Cy, Dx, Dy) !== ccw_xy(Bx, By, Cx, Cy, Dx, Dy) && 
+    return ccw_xy(Ax, Ay, Cx, Cy, Dx, Dy) !== ccw_xy(Bx, By, Cx, Cy, Dx, Dy) &&
            ccw_xy(Ax, Ay, Bx, By, Cx, Cy) !== ccw_xy(Ax, Ay, Bx, By, Dx, Dy)
 }
 
@@ -55,7 +56,7 @@ function segments_intersection(
     Dx: number, Dy: number,
     out: VecLike,
 ): boolean {
-    
+
     let mAB = (By-Ay) / (Bx-Ax)
     let mCD = (Dy-Cy) / (Dx-Cx)
 
@@ -68,9 +69,27 @@ function segments_intersection(
            within_segment(out, Cx, Cy, Dx, Dy)
 }
 
+export function get_x_on_segment(
+    x1: number, y1: number,
+    x2: number, y2: number,
+    y: number
+): number {
+    return x1 + (y-y1) / (y2-y1) * (x2-x1)
+}
+
+export function get_y_on_segment(
+    x1: number, y1: number,
+    x2: number, y2: number,
+    x: number
+): number {
+    return y1 + (x-x1) / (x2-x1) * (y2-y1)
+}
+
+
 type Union<T> = {[K in keyof T]: UnionMember<T, K>}[keyof T]
 
 type UnionMember<T, K extends keyof T> = {kind: K, data: T[K]}
+
 
 type Shapes = {
     draw:      Tldraw.TLDrawShape
@@ -78,21 +97,20 @@ type Shapes = {
     geo:       Tldraw.TLGeoShape
     frame:     Tldraw.TLFrameShape
     embed:     Tldraw.TLEmbedShape
-    group:     Tldraw.TLGroupShape    
+    group:     Tldraw.TLGroupShape
     highlight: Tldraw.TLHighlightShape
     image:     Tldraw.TLImageShape
     line:      Tldraw.TLLineShape
     note:      Tldraw.TLNoteShape
     video:     Tldraw.TLVideoShape
 }
-
 type Shape = Union<Shapes>
 
 function getShape(shape: Tldraw.TLShape): Shape {
     return {kind: shape.type, data: shape} as any
 }
 
-type AsciiMatrix = (null | undefined | string)[]
+type AsciiMatrix = number[]
 
 const CHAR_V        = '│'
 const CHAR_H        = '─'
@@ -104,6 +122,7 @@ const CHAR_A_B_R    = '╭'
 const CHAR_A_B_L    = '╮'
 const CHAR_A_T_L    = '╯'
 const CHAR_A_T_R    = '╰'
+
 
 function drawGeometryAscii(
     ctx:        CanvasRenderingContext2D,
@@ -136,7 +155,7 @@ function drawGeometryAscii(
     let prev_cell = new Vec
 
     for (let vi = 0; vi < geometry.vertices.length; vi++) {
-        
+
         prev_v.setTo(v)
         prev_cell.setTo(cell)
 
@@ -152,7 +171,7 @@ function drawGeometryAscii(
             cell.setTo(prev_cell)
             continue
         }
-        
+
         {
             ctx.beginPath()
             ctx.arc(v.x, v.y, camera_mat.a, 0, TAU)
@@ -304,7 +323,7 @@ function drawGeometryAscii(
 }
 
 function get_char_from_vec(d: VecLike): string {
-    
+
     let ax = abs(d.x)
     let ay = abs(d.y)
     let ad = abs(ax-ay)
@@ -330,7 +349,7 @@ function drawGeometryAscii2(
 ) {
 
     let cell_hypot = Math.hypot(cell_size.x/2, cell_size.y/2)
-    
+
     let geometry = editor.getShapeGeometry(shape)
     let mat = editor.getShapePageTransform(shape)
 
@@ -353,7 +372,7 @@ function drawGeometryAscii2(
     let path: PathItem[] = []
 
     for (let vi = 0; vi < geometry.vertices.length; vi++) {
-        
+
         prev_v.setTo(v)
         prev_cell.setTo(cell)
 
@@ -378,7 +397,7 @@ function drawGeometryAscii2(
         let ax = abs(d.x)
         let ay = abs(d.y)
         let ad = abs(ax-ay)
-    
+
         let is_diagonal = ad < ax && ad < ay
 
         /* Eliminate points in diagonal strokes that barely touch a cell */
@@ -392,7 +411,7 @@ function drawGeometryAscii2(
                 continue
             }
         }
-        
+
         {
             ctx.beginPath()
             ctx.arc(v.x, v.y, camera_mat.a, 0, TAU)
@@ -471,7 +490,7 @@ function drawGeometryAscii2(
             let ax = abs(dx)
             let ay = abs(dy)
             let ad = abs(ax-ay)
-        
+
             if (ad < ax && ad < ay) {
                 char =  sign(dx) === sign(dy) ? CHAR_D_TL_BR : CHAR_D_TR_BL
             } else if (ax > ay) {
@@ -480,7 +499,7 @@ function drawGeometryAscii2(
                 char =  CHAR_V
             }
         }
-        
+
 
         if (i > 0 && i < path.length-1) {
             let prev = path[i-1]
@@ -490,12 +509,12 @@ function drawGeometryAscii2(
             let prev_dcy = item.c.y-prev.c.y
             let next_dcx = item.c.x-next.c.x
             let next_dcy = item.c.y-next.c.y
-            
 
-            /* 
+
+            /*
              Eliminate/smooth corners
 
-             |           |  
+             |           |
              |――    ->    ――
 
             */
@@ -515,7 +534,7 @@ function drawGeometryAscii2(
             /*
              Smooth diagonal-straight connection
 
-              ――          ―- 
+              ――          ―-
                 ――   ->     \―
 
             */
@@ -567,6 +586,278 @@ function drawGeometryAscii2(
     }
 }
 
+/*
+|   ▁▁▁▁▁▁▁▁▁
+|   |╲ ╱|╲ ╱|   1 char   ==   20 edges
+|   | ╳ | ╳ |
+|   |╱ ╲|╱ ╲|    ┊ 0┊ 1┊ 2┊ 3┊ 4┊
+|   ━━━━━━━━━    ┊▎ ┊▔ ┊ ▔┊ 🮈┊  ┊
+|   |╲ ╱|╲ ╱|    ┊  ┊  ┊  ┊  ┊ 🮈┊
+|   | ╳ | ╳ |    ┊ 5┊ 6┊ 7┊ 8┊ 9┊
+|   |╱ ╲|╱ ╲|    ┊  ┊  ┊  ┊ ▎┊  ┊
+|   ▔▔▔▔▔▔▔▔▔    ┊ ▁┊▁ ┊▎ ┊  ┊ ▎┊
+|                ┊10┊11┊12┊13┊14┊
+|                ┊  ┊  ┊╲ ┊╱ ┊ ╲┊
+|                ┊▔ ┊ ▔┊  ┊  ┊  ┊
+|                ┊15┊16┊17┊18┊19┊
+|                ┊ ╱┊  ┊  ┊  ┊  ┊
+|                ┊  ┊╲ ┊╱ ┊ ╲┊ ╱┊
+*/
+
+function placement_hash(ax: number, ay: number, bx: number, by: number): number {
+    return (1<<(ax + ay*3)) | (1<<(bx + by*3))
+}
+
+const points_table: Readonly<Record<number, number>> = {
+    // single
+    [placement_hash(0, 0, 0, 1)]: 1<<0,
+    [placement_hash(0, 0, 1, 0)]: 1<<1,
+    [placement_hash(1, 0, 2, 0)]: 1<<2,
+    [placement_hash(2, 0, 2, 1)]: 1<<3,
+    [placement_hash(2, 1, 2, 2)]: 1<<4,
+    [placement_hash(1, 2, 2, 2)]: 1<<5,
+    [placement_hash(0, 2, 1, 2)]: 1<<6,
+    [placement_hash(0, 1, 0, 2)]: 1<<7,
+    [placement_hash(1, 0, 1, 1)]: 1<<8,
+    [placement_hash(1, 1, 1, 2)]: 1<<9,
+    [placement_hash(0, 1, 1, 1)]: 1<<10,
+    [placement_hash(1, 1, 2, 1)]: 1<<11,
+    [placement_hash(0, 0, 1, 1)]: 1<<12,
+    [placement_hash(1, 0, 0, 1)]: 1<<13,
+    [placement_hash(1, 0, 2, 1)]: 1<<14,
+    [placement_hash(2, 0, 1, 1)]: 1<<15,
+    [placement_hash(0, 1, 1, 2)]: 1<<16,
+    [placement_hash(1, 1, 0, 2)]: 1<<17,
+    [placement_hash(1, 1, 2, 2)]: 1<<18,
+    [placement_hash(2, 1, 1, 2)]: 1<<19,
+    // diagonal
+    [placement_hash(0, 0, 2, 2)]: 1<<12 | 1<<18,
+    [placement_hash(2, 0, 0, 2)]: 1<<15 | 1<<17,
+    // straight
+    [placement_hash(2, 0, 2, 2)]: 1<<3  | 1<<4,
+    [placement_hash(0, 0, 0, 2)]: 1<<0  | 1<<7,
+    [placement_hash(0, 0, 2, 0)]: 1<<1  | 1<<2,
+    [placement_hash(0, 2, 2, 2)]: 1<<5  | 1<<6,
+    [placement_hash(0, 1, 2, 1)]: 1<<10 | 1<<11,
+    [placement_hash(1, 0, 1, 2)]: 1<<8  | 1<<9,
+    // extra
+    [placement_hash(0, 0, 1, 2)]: 1<<12 | 1<<9,
+    [placement_hash(2, 0, 1, 2)]: 1<<15 | 1<<9,
+    [placement_hash(1, 0, 2, 2)]: 1<<8  | 1<<18,
+    [placement_hash(1, 0, 0, 2)]: 1<<8  | 1<<17,
+    [placement_hash(0, 1, 2, 0)]: 1<<10 | 1<<15,
+    [placement_hash(0, 1, 2, 2)]: 1<<10 | 1<<18,
+    [placement_hash(2, 1, 0, 0)]: 1<<11 | 1<<12,
+    [placement_hash(2, 1, 0, 2)]: 1<<11 | 1<<17,
+}
+
+function points_to_char(points: number): string | null {
+    /* ▎▔▕▁  ╱╲╳ */
+    switch (points) {
+    case 1<<0:  return '▎'  // left
+    case 1<<1:  return '▔'  // top
+    case 1<<2:  return '▔'  // top
+    case 1<<3:  return '▕'  // right
+    case 1<<4:  return '▕'  // right
+    case 1<<5:  return '▁'  // bottom
+    case 1<<6:  return '▁'  // bottom
+    case 1<<7:  return '▎'  // left
+    case 1<<8:  return '▐'  // top middle
+    case 1<<9:  return '▐'  // bottom middle
+    case 1<<10: return '―'  // left middle
+    case 1<<11: return '―'  // right middle
+    case 1<<12: return '╲'  // top left diagonal
+    case 1<<13: return '╱'  // top left diagonal
+    case 1<<14: return '╲'  // top right diagonal
+    case 1<<15: return '╱'  // top right diagonal
+    case 1<<16: return '╲'  // bottom left diagonal
+    case 1<<17: return '╱'  // bottom left diagonal
+    case 1<<18: return '╲'  // bottom right diagonal
+    case 1<<19: return '╱'  // bottom right diagonal
+    default: {
+        // Multiple points - return cross or intersection
+        let hasHorizontal = points & ((1<<10) | (1<<11))
+        let hasVertical = points & ((1<<8) | (1<<9))
+        let hasDiagonalLeft = points & ((1<<12) | (1<<14) | (1<<16) | (1<<18))
+        let hasDiagonalRight = points & ((1<<13) | (1<<15) | (1<<17) | (1<<19))
+
+        if (hasHorizontal && hasVertical) return '┼'
+        if (hasDiagonalLeft && hasDiagonalRight) return '╳'
+        if (hasHorizontal) return '─'
+        if (hasVertical) return '│'
+        if (hasDiagonalLeft) return '╲'
+        if (hasDiagonalRight) return '╱'
+        return null
+    }
+    }
+}
+
+type DrawCtx = {
+    ctx:         CanvasRenderingContext2D,
+    editor:      Tldraw.Editor,
+    camera_mat:  MatLike,
+    cell_size:   VecLike,
+    grid_pos:    VecLike,
+    grid_cells:  VecLike,
+    matrix:      AsciiMatrix,
+}
+
+function placement_from_pos(
+    ctx: DrawCtx,
+     x: number,  y: number,
+): number {
+
+    x = Math.ceil((x - ctx.grid_pos.x + ctx.cell_size.x/2) / ctx.cell_size.x/2)
+    y = Math.ceil((y - ctx.grid_pos.y + ctx.cell_size.y/2) / ctx.cell_size.y/2)
+
+    return x + y*ctx.grid_cells.x*2
+}
+
+function drawGeometryAscii3(
+    ctx:         CanvasRenderingContext2D,
+    editor:      Tldraw.Editor,
+    camera_mat:  MatLike,
+    cell_size:   VecLike,
+    grid_pos:    VecLike,
+    grid_cells:  VecLike,
+    matrix:      AsciiMatrix,
+    shape: Tldraw.TLShape | Tldraw.TLShapeId,
+) {
+
+    let geometry = editor.getShapeGeometry(shape)
+    let mat      = editor.getShapePageTransform(shape)
+
+    if (geometry.vertices.length <= 1) {
+        console.log('single vertex')
+        return
+    }
+
+    let v         = new Vec
+    let cell      = new Vec
+    let prev_v    = new Vec
+    let prev_cell = new Vec
+
+    let last_px   = -1
+    let last_py   = -1
+
+    function add_placement(x: number, y: number) {
+
+        let px = floor((x - grid_pos.x + cell_size.x/4) / (cell_size.x/2))
+        let py = floor((y - grid_pos.y + cell_size.y/4) / (cell_size.y/2))
+
+        let cx = floor(min(last_px, px) / 2)
+        let cy = floor(min(last_py, py) / 2)
+
+        if (last_px !== -1 && last_py !== -1 &&
+            (last_px !== px || last_py !== py) &&
+            cx >= 0 && cx < grid_cells.x &&
+            cy >= 0 && cy < grid_cells.y
+        ) {
+            let s = placement_hash(last_px - cx*2, last_py - cy*2, px - cx*2, py - cy*2)
+
+            console.assert(s in points_table)
+
+            matrix[cx + cy*grid_cells.x] = points_table[s]
+        }
+
+        _dot_pos.x = px * cell_size.x/2 + grid_pos.x
+        _dot_pos.y = py * cell_size.y/2 + grid_pos.y
+
+        path_placement.moveTo(_dot_pos.x, _dot_pos.y)
+        path_placement.arc(_dot_pos.x, _dot_pos.y, camera_mat.a, 0, TAU)
+
+        path_lines.lineTo(_dot_pos.x, _dot_pos.y)
+
+        last_px = px
+        last_py = py
+    }
+
+    let path_lines = new Path2D
+    let path_placement = new Path2D
+    let path_cut = new Path2D
+
+    let _dot_pos = new Vec
+
+    for (let vi = 0; vi < geometry.vertices.length; vi++) {
+
+        prev_v.setTo(v)
+        prev_cell.setTo(cell)
+
+        v.setTo(geometry.vertices[vi])
+        transform(v, mat)
+        transform(v, camera_mat)
+
+        cell.x = floor((v.x-grid_pos.x) / cell_size.x)
+        cell.y = floor((v.y-grid_pos.y) / cell_size.y)
+
+        if (vi === 0) {
+            add_placement(v.x, v.y)
+            continue
+        }
+
+        let cx = prev_cell.x
+        let cy = prev_cell.y
+
+        for (;;) {
+
+            let dcx = sign(cell.x-cx)
+            let dcy = sign(cell.y-cy)
+
+            let cell_x = grid_pos.x + cx * cell_size.x
+            let cell_y = grid_pos.y + cy * cell_size.y
+
+            let cut_x = cell_x + max(0, dcx) * cell_size.x
+            let cut_y = cell_y + max(0, dcy) * cell_size.y
+
+            /* End */
+            if (dcx === 0 && dcy === 0) {
+                break
+            }
+            /* Horizontal */
+            else if (dcy === 0 || (dcx !== 0 && ccw_segments_intersecting_xy(
+                prev_v.x, prev_v.y,
+                v.x, v.y,
+                cut_x, cell_y,
+                cut_x, cell_y + cell_size.y,
+            ))) {
+                cx += dcx
+
+                cut_y = get_y_on_segment(
+                    prev_v.x, prev_v.y,
+                    v.x, v.y,
+                    cut_x,
+                )
+            }
+            /* Vertical */
+            else {
+                cy += dcy
+
+                cut_x = get_x_on_segment(
+                    prev_v.x, prev_v.y,
+                    v.x, v.y,
+                    cut_y,
+                )
+            }
+
+            path_cut.moveTo(cut_x, cut_y)
+            path_cut.arc(cut_x, cut_y, camera_mat.a*0.8, 0, TAU)
+
+            add_placement(cut_x, cut_y)
+        }
+
+        add_placement(v.x, v.y)
+    }
+
+    ctx.strokeStyle = 'rgb(0, 0, 255)'
+    ctx.stroke(path_lines)
+
+    ctx.fillStyle = 'rgb(0, 200, 59)'
+    ctx.fill(path_placement)
+
+    ctx.fillStyle = 'rgb(240, 20, 59)'
+    ctx.fill(path_cut)
+}
+
 function CustomBackground(): React.ReactNode {
 
 	const editor = Tldraw.useEditor()
@@ -582,7 +873,7 @@ function CustomBackground(): React.ReactNode {
 
 		const ctx = canvas.getContext('2d')!
         ctx.imageSmoothingEnabled = false
-        
+
 
         let dpr = 1
         let font_size = new Vec(16, 12)
@@ -631,7 +922,7 @@ function CustomBackground(): React.ReactNode {
             if (needs_remeasure) {
                 measure_time = time
                 resized = false
-                
+
                 dpr = Tldraw.clamp(window.devicePixelRatio, 1, 2)
 
                 window_size.x = window.innerWidth
@@ -640,10 +931,10 @@ function CustomBackground(): React.ReactNode {
                 canvas.width  = (window_size.x * dpr)|0
                 canvas.height = (window_size.y * dpr)|0
             }
-            
+
 			ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 			ctx.clearRect(0, 0, window_size.x, window_size.y)
-            
+
             if (needs_remeasure) {
                 font_size.y = parseFloat(window.getComputedStyle(document.body).fontSize)
                 ctx.font = font_size.y+'px monospace'
@@ -675,20 +966,20 @@ function CustomBackground(): React.ReactNode {
                 ctx.beginPath()
                 ctx.strokeStyle = 'rgba(128, 128, 128, 0.2)'
                 ctx.lineWidth = line_width
-                
-    
+
+
                 // vertical lines
                 for (let i = 0; i <= grid_cells.x; i++) {
                     ctx.moveTo(grid_pos.x + i*cell_size.x, 0)
                     ctx.lineTo(grid_pos.x + i*cell_size.x, cell_size.y*grid_cells.y)
                 }
-    
+
                 // horizontal lines
                 for (let i = 0; i <= grid_cells.y; i++) {
                     ctx.moveTo(0,                grid_pos.y + i*cell_size.y)
                     ctx.lineTo(cell_size.x*grid_cells.x, grid_pos.y + i*cell_size.y)
                 }
-    
+
                 ctx.stroke()
             }
 
@@ -716,60 +1007,60 @@ function CustomBackground(): React.ReactNode {
                 switch (shape.kind) {
                 case 'draw': {
 
-                    drawGeometryAscii2(
+                    drawGeometryAscii3(
                         ctx,
                         editor,
-                        shape.data,
                         camera_mat,
                         cell_size,
                         grid_pos,
                         grid_cells,
                         matrix,
+                        shape.data,
                     )
 
                     break
                 }
                 case 'arrow': {
 
-                    drawGeometryAscii2(
+                    drawGeometryAscii3(
                         ctx,
                         editor,
-                        shape.data,
                         camera_mat,
                         cell_size,
                         grid_pos,
                         grid_cells,
                         matrix,
+                        shape.data,
                     )
 
                     break
                 }
                 case 'geo': {
 
-                    drawGeometryAscii2(
+                    drawGeometryAscii3(
                         ctx,
                         editor,
-                        shape.data,
                         camera_mat,
                         cell_size,
                         grid_pos,
                         grid_cells,
                         matrix,
+                        shape.data,
                     )
 
                     break
                 }
                 case 'line': {
 
-                    drawGeometryAscii2(
+                    drawGeometryAscii3(
                         ctx,
                         editor,
-                        shape.data,
                         camera_mat,
                         cell_size,
                         grid_pos,
                         grid_cells,
                         matrix,
+                        shape.data,
                     )
 
                     break
@@ -794,12 +1085,15 @@ function CustomBackground(): React.ReactNode {
 
             for (let y = 0; y < grid_cells.y; y++) {
             for (let x = 0; x < grid_cells.x; x++) {
-                let char = matrix[x + y*grid_cells.x]
-                if (char) {
-                    ctx.fillText(
-                        char,
-                        grid_pos.x + x * cell_size.x,
-                        grid_pos.y + (y+1) * cell_size.y)
+                let idx = x + y*grid_cells.x
+                if (idx in matrix) {
+                    let char = points_to_char(matrix[idx])
+                    if (char != null) {
+                        ctx.fillText(
+                            char,
+                            grid_pos.x + x * cell_size.x,
+                            grid_pos.y + (y+1) * cell_size.y)
+                    }
                 }
             }
             }
