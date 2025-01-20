@@ -652,44 +652,58 @@ const points_table: Readonly<Record<number, number>> = {
 }
 
 function points_to_char(points: number): string | null {
+
     /* ▎▔▕▁  ╱╲╳ */
     switch (points) {
-    case 1<<0:  return '▎'  // left
-    case 1<<1:  return '▔'  // top
-    case 1<<2:  return '▔'  // top
-    case 1<<3:  return '▕'  // right
-    case 1<<4:  return '▕'  // right
-    case 1<<5:  return '▁'  // bottom
-    case 1<<6:  return '▁'  // bottom
-    case 1<<7:  return '▎'  // left
-    case 1<<8:  return '▐'  // top middle
-    case 1<<9:  return '▐'  // bottom middle
-    case 1<<10: return '―'  // left middle
-    case 1<<11: return '―'  // right middle
-    case 1<<12: return '╲'  // top left diagonal
-    case 1<<13: return '╱'  // top left diagonal
-    case 1<<14: return '╲'  // top right diagonal
-    case 1<<15: return '╱'  // top right diagonal
-    case 1<<16: return '╲'  // bottom left diagonal
-    case 1<<17: return '╱'  // bottom left diagonal
-    case 1<<18: return '╲'  // bottom right diagonal
-    case 1<<19: return '╱'  // bottom right diagonal
-    default: {
-        // Multiple points - return cross or intersection
-        let has_horizontal     = points & (1<<10 | 1<<11)
-        let has_vertical       = points & (1<<8 | 1<<9)
-        let has_diagonal_left  = points & (1<<12 | 1<<14 | 1<<16 | 1<<18)
-        let has_diagonal_right = points & (1<<13 | 1<<15 | 1<<17 | 1<<19)
+    case 1<<0:                return '▏'
+    case 1<<1:                return '▔'
+    case 1<<2:                return '▔'
+    case 1<<2 | 1<<1:         return '▔'
+    case 1<<3:                return '▕'
+    case 1<<4:                return '▕'
+    case 1<<3 | 1<<4:         return '▕'
+    case 1<<5:                return '▁'
+    case 1<<6:                return '▁'
+    case 1<<5 | 1<<6:         return '▁'
+    case 1<<7:                return '▏'
+    case 1<<0 | 1<<7:         return '▏'
+    case 1<<8:                return '│'
+    case 1<<9:                return '│'
+    case 1<<8 | 1<<9:         return '│'
+    case 1<<10:               return '─'
+    case 1<<11:               return '─'
+    case 1<<10 | 1<<11:       return '─'
+    case 1<<13:               return '🮠'
+    case 1<<14:               return '🮡'
+    case 1<<16:               return '🮢'
+    case 1<<19:               return '🮣'
+    case 1<<12 | 1<<18:       return '╲'
+    case 1<<15 | 1<<17:       return '╱'
+    case 1<<13 | 1<<19:       return '🮨'
+    case 1<<16 | 1<<16:       return '🮩'
+    case 1<<9  | 1<<10:       return '╮'
+    case 1<<9  | 1<<11:       return '╭'
+    case 1<<8  | 1<<10:       return '╯'
+    case 1<<8  | 1<<11:       return '╰'
+    case 1<<1  | 1<<8 | 1<<9: return '˥'
+    case 1<<6  | 1<<8 | 1<<9: return '˩'
+    }
 
-        if (has_horizontal && has_vertical) return '┼'
-        if (has_diagonal_left && has_diagonal_right) return '╳'
-        if (has_horizontal) return '─'
-        if (has_vertical) return '│'
-        if (has_diagonal_left) return '╲'
-        if (has_diagonal_right) return '╱'
-        return null
-    }
-    }
+    // Multiple points - return cross or intersection
+    let has_horizontal     = points & (1<<10 | 1<<11)
+    let has_vertical       = points & (1<<8 | 1<<9)
+    let has_horizontal_top = points & (1<<1 | 1<<2)
+    let has_horizontal_bot = points & (1<<5 | 1<<6) 
+    let has_diagonal_left  = points & (1<<12 | 1<<14 | 1<<16 | 1<<18)
+    let has_diagonal_right = points & (1<<13 | 1<<15 | 1<<17 | 1<<19)
+
+    if (has_horizontal && has_vertical) return '┼'
+    if (has_diagonal_left && has_diagonal_right) return '╳'
+    if (has_horizontal || has_horizontal_top || has_horizontal_bot) return '─'
+    if (has_vertical) return '│'
+    if (has_diagonal_left) return '╲'
+    if (has_diagonal_right) return '╱'
+    return null
 }
 
 type DrawCtx = {
